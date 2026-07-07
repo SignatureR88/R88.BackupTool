@@ -14,16 +14,16 @@ namespace R88.BackupTool.Models
 		public static string GetDirectoryPath(string path)
 		{
 			var ofd = new Microsoft.Win32.OpenFolderDialog();
-			
+
 			if (ofd.ShowDialog() == true)
 			{
 				return ofd.FolderName;
 			}
-			else if(path != string.Empty)
+			else if (path != string.Empty)
 			{
 				return path;
 			}
-			else 
+			else
 			{
 				return string.Empty;
 			}
@@ -31,8 +31,7 @@ namespace R88.BackupTool.Models
 
 		public void Backup()
 		{
-			string backupDirectoryName;
-			string backupDirectoryPath;
+			string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 			string timeStamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 			string? root = Path.GetPathRoot(DestinationPath);
 			DriveInfo drive;
@@ -43,8 +42,8 @@ namespace R88.BackupTool.Models
 				{
 					throw new DirectoryNotFoundException($@" ""{SourcePath}"" is not found.");
 				}
-				backupDirectoryName = Path.GetFileName(SourcePath) + $"_{timeStamp}";
-
+				string sourceDirectoryName = Path.GetFileName(SourcePath);
+				string backupName = $"{sourceDirectoryName}_{timeStamp}";
 				if (root != null)
 				{
 					drive = new DriveInfo(root);
@@ -53,31 +52,70 @@ namespace R88.BackupTool.Models
 					{
 						string driveLetter = drive.Name;
 						throw new DriveNotFoundException($@" ""{driveLetter}"" is not found.");
-
 					}
 				}
-				backupDirectoryPath = Path.Combine(DestinationPath, $"{backupDirectoryName}.zip");
+				string backupDirectoryPath = Path.Combine(DestinationPath, $"{backupName}.zip");
 				if (!Directory.Exists(DestinationPath))
 				{
 					Directory.CreateDirectory(DestinationPath);
 				}
-				//ZipFile.CreateFromDirectory(SourcePath, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
-				Debug.Print($"{backupDirectoryPath}");
+				string path = Path.Combine(tempDir, sourceDirectoryName);
+				CopyDirectory(SourcePath, path);
+				ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
 			}
-			catch (DirectoryNotFoundException ex)
+			catch (DirectoryNotFoundException)
 			{
-				throw new DirectoryNotFoundException(ex.Message);
+				throw;
 			}
 
-			catch (DriveNotFoundException ex)
+			catch (DriveNotFoundException)
 			{
-				throw new DriveNotFoundException(ex.Message);
+				throw;
 
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
-				throw new Exception(ex.Message);
+				throw;
 			}
+			finally
+			{
+				if (Directory.Exists(tempDir))
+				{
+					Directory.Delete(tempDir, true);
+				}
+			}
+		}
+
+		/// <summary>
+		/// フォルダコピーメソッド
+		/// </summary>
+		/// <param name="sourceDir">コピー元</param>
+		/// <param name="destinationDir">コピー先</param>
+		/// <exception cref="DirectoryNotFoundException">コピー元が存在しない例外</exception>
+		private static void CopyDirectory(string sourceDir, string destinationDir)
+		{
+			var dir = new DirectoryInfo(sourceDir);
+			if (!dir.Exists)
+			{
+				throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
+			}
+
+			DirectoryInfo[] dirs = dir.GetDirectories();
+			
+			Directory.CreateDirectory(destinationDir);
+			
+			foreach (FileInfo file in dir.GetFiles())
+			{
+				string targetFilePath = Path.Combine(destinationDir, file.Name);
+				file.CopyTo(targetFilePath);
+			}
+
+			foreach (DirectoryInfo subDir in dirs)
+			{
+				string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
+				CopyDirectory(subDir.FullName, newDestinationDir);
+			}
+			
 		}
 	}
 }

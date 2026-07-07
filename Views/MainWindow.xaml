@@ -85,7 +85,6 @@
                                   DisplayMemberPath="Text"
                                   SelectedValuePath="Value" 
                                   SelectedItem="{Binding SelectedInterval}"
-                                  SelectedIndex="{Binding SelectedIntervalIndex}"
                                   IsEnabled="{Binding IsIntervalCmbEnabled}">
                         </ComboBox>
                     </StackPanel>

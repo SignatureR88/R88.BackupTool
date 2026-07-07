@@ -11,7 +11,7 @@ namespace R88.BackupTool.Models
 		public string SourcePath { get; set; } = string.Empty;
 		[JsonPropertyName("destPath")]
 		public string DestinationPath { get; set; } = string.Empty;
-		[JsonPropertyName("intervalIndex")]
-		public int IntervalIndex { get; set; }
+		[JsonPropertyName("selectedIndex")]
+		public int SelectedIndex { get; set; }
 	}
 }

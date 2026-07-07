@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace R88.BackupTool.ViewModels
 {
-	internal class MatchPropertyAttribute(string targetProperty) : ValidationAttribute
+	internal class NotMatchPropertyAttribute(string targetProperty) : ValidationAttribute
 	{
 		/// <summary>
 		/// 比較対象のプロパティ名

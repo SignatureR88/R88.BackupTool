@@ -4,6 +4,7 @@ using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Security;
 using System.Text.Json;
 using System.Windows;
 
@@ -18,12 +19,11 @@ namespace R88.BackupTool.ViewModels
 
 		[ObservableProperty]
 		[NotifyDataErrorInfo]
-		[MatchProperty(nameof(SourcePath), ErrorMessage = "バックアップ元と同じパスは指定できません。")]
+		[NotMatchProperty(nameof(SourcePath), ErrorMessage = "バックアップ元と同じパスは指定できません。")]
 		private string _destinationPath = string.Empty;
 
 		[ObservableProperty]
-		private ObservableCollection<IntervalCmbItems> _intervalCmbSource = [
-		
+		private ObservableCollection<IntervalCmbItems> _intervalCmbSource = [		
 			new IntervalCmbItems("5分", TimeSpan.FromMinutes(5)),
 			new IntervalCmbItems("10分", TimeSpan.FromMinutes(10)),
 			new IntervalCmbItems("20分", TimeSpan.FromMinutes(20)),
@@ -37,15 +37,15 @@ namespace R88.BackupTool.ViewModels
 		private IntervalCmbItems _selectedInterval;
 
 		[ObservableProperty]
-		private int _selectedIntervalIndex;
-
-		[ObservableProperty]
 		[NotifyPropertyChangedFor(nameof(AppStatus))]
 		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnabled))]
 		[NotifyCanExecuteChangedFor(nameof(SetSourcePathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(SetDestinationPathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(BackupRunCommand))]
 		[NotifyCanExecuteChangedFor(nameof(StopCommand))]
+		[NotifyCanExecuteChangedFor(nameof(SaveAppDataCommand))]
+		[NotifyCanExecuteChangedFor(nameof(LoadPreviouseCommand))]
+		[NotifyCanExecuteChangedFor(nameof(ExitCommand))]
 		private IAppState _currentState;
 		#endregion
 
@@ -53,8 +53,13 @@ namespace R88.BackupTool.ViewModels
 
 		private CancellationTokenSource? _cts;
 
+		private int _selectedIndex;
+
 		private TimeSpan _interval;
 
+		/// <summary>
+		/// フォルダパスとIntervalの設定を保存するJsonファイルのパス
+		/// </summary>
 		private readonly string _appDataFileName = Path.Combine(AppContext.BaseDirectory, "appdata.json");
 		private readonly JsonSerializerOptions _jsonOps = new() { WriteIndented = true };
 		
@@ -65,8 +70,8 @@ namespace R88.BackupTool.ViewModels
 			CurrentState = new InitialState();
 			SourcePath = _model.SourcePath;
 			DestinationPath = _model.DestinationPath;
-			SelectedIntervalIndex = 1;
-			SelectedInterval = IntervalCmbSource[SelectedIntervalIndex];
+			_selectedIndex = 1;
+			SelectedInterval = IntervalCmbSource[_selectedIndex];
 			_interval = SelectedInterval.Value;
 		}
 
@@ -88,6 +93,7 @@ namespace R88.BackupTool.ViewModels
 		partial void OnSelectedIntervalChanged(IntervalCmbItems value)
 		{
 			_interval = SelectedInterval.Value;
+			_selectedIndex = IntervalCmbSource.IndexOf(value);
 		}
 
 		public bool IsFilled()
@@ -141,13 +147,13 @@ namespace R88.BackupTool.ViewModels
 				catch (DriveNotFoundException ex)
 				{
 					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Dirve Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+					MessageBox.Show(ex.Message, "Drive Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				catch (Exception ex)
 				{
 					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Directory Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				finally
@@ -171,28 +177,46 @@ namespace R88.BackupTool.ViewModels
 			{
 				DestinationPath = DestinationPath,
 				SourcePath = SourcePath,
-				IntervalIndex = SelectedIntervalIndex
+				SelectedIndex = _selectedIndex
 			};
 
 			var json = JsonSerializer.Serialize(appData, _jsonOps);
-			File.WriteAllText(_appDataFileName, json);
+			try
+			{
+				File.WriteAllText(_appDataFileName, json);
+			}
+			catch (IOException ex)
+			{
+				MessageBox.Show(ex.Message, "File Open Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+			}
+			catch(SecurityException ex)
+			{
+				MessageBox.Show(ex.Message, "Permisson Denied", MessageBoxButton.OK, MessageBoxImage.Error);
+			}
 		}
 
 		[RelayCommand(CanExecute = nameof(CanExecuteLoadPrevious))]
-		public void LoadPreviouse() 
+		public void LoadPreviouse()
 		{
-			if (File.Exists(_appDataFileName))
+			try
 			{
-				var json = File.ReadAllText(_appDataFileName);
-				var addData = JsonSerializer.Deserialize<AppDatas>(json);
-
-				if(addData != null)
+				if (File.Exists(_appDataFileName))
 				{
-					DestinationPath = addData.DestinationPath;
-					SourcePath = addData.SourcePath;
-					SelectedIntervalIndex = addData.IntervalIndex;
-					SelectedInterval = IntervalCmbSource[SelectedIntervalIndex];
+					var json = File.ReadAllText(_appDataFileName);
+					var addData = JsonSerializer.Deserialize<AppDatas>(json);
+
+					if (addData != null)
+					{
+						DestinationPath = addData.DestinationPath;
+						SourcePath = addData.SourcePath;
+						_selectedIndex = addData.SelectedIndex;
+						SelectedInterval = IntervalCmbSource[_selectedIndex];
+					}
 				}
+			}
+			catch (Exception ex) when (ex is IOException or JsonException)
+			{
+				MessageBox.Show(ex.Message, "Load Failed", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
 		}
 
