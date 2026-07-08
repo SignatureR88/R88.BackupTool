@@ -80,7 +80,7 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value);
+				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				_sourcePath = full;
 				_model.SourcePath = full;
 			}
@@ -102,7 +102,7 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value);
+				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				_destinationPath = full;
 				_model.DestinationPath = full;
 			}
@@ -111,6 +111,8 @@ namespace R88.BackupTool.ViewModels
 				_destinationPath = value;
 				_model.DestinationPath = value;
 			}
+
+			ValidateProperty(DestinationPath, nameof(DestinationPath));
 
 			CurrentState.ChangeState(this);
 		}
@@ -220,7 +222,7 @@ namespace R88.BackupTool.ViewModels
 			{
 				MessageBox.Show(ex.Message, "File Open Failed", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
-			catch(SecurityException ex)
+			catch(UnauthorizedAccessException ex)
 			{
 				MessageBox.Show(ex.Message, "Permisson Denied", MessageBoxButton.OK, MessageBoxImage.Error);
 			}
@@ -248,7 +250,7 @@ namespace R88.BackupTool.ViewModels
 					}
 				}
 			}
-			catch (Exception ex) when (ex is IOException or JsonException)
+			catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
 			{
 				MessageBox.Show(ex.Message, "Load Failed", MessageBoxButton.OK, MessageBoxImage.Error);
 			}

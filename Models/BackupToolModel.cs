@@ -58,6 +58,13 @@ namespace R88.BackupTool.Models
 					}
 				}
 				string backupDirectoryPath = Path.Combine(DestinationPath, $"{backupName}.zip");
+				string sourceFullPath = Path.GetFullPath(SourcePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string destinationFullPath = Path.GetFullPath(DestinationPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				if(destinationFullPath.StartsWith(sourceFullPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+				{
+					throw new IOException("バックアップ先にバックアップ元配下のフォルダが含まれています。");
+				}
+
 				if (!Directory.Exists(DestinationPath))
 				{
 					Directory.CreateDirectory(DestinationPath);
@@ -102,6 +109,10 @@ namespace R88.BackupTool.Models
 
 			foreach (DirectoryInfo subDir in dirs)
 			{
+				if(subDir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+				{
+					continue;
+				}
 				string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
 				CopyDirectory(subDir.FullName, newDestinationDir);
 			}
