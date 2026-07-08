@@ -83,7 +83,6 @@
                         <ComboBox Margin="5 0" Width="70"
                                   ItemsSource="{Binding IntervalCmbSource}"
                                   DisplayMemberPath="Text"
-                                  SelectedValuePath="Value" 
                                   SelectedItem="{Binding SelectedInterval}"
                                   IsEnabled="{Binding IsIntervalCmbEnabled}">
                         </ComboBox>

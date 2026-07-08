@@ -1,7 +1,5 @@
 ﻿using System.IO;
-using System.Windows;
 using System.IO.Compression;
-using System.Diagnostics;
 
 namespace R88.BackupTool.Models
 {
@@ -28,7 +26,12 @@ namespace R88.BackupTool.Models
 				return string.Empty;
 			}
 		}
-
+		/// <summary>
+		/// バックアップを実行するメソッド
+		/// ロック中のファイル対策で一時フォルダに待避後圧縮します
+		/// </summary>
+		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
+		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
 		public void Backup()
 		{
 			string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -59,23 +62,10 @@ namespace R88.BackupTool.Models
 				{
 					Directory.CreateDirectory(DestinationPath);
 				}
+
 				string path = Path.Combine(tempDir, sourceDirectoryName);
 				CopyDirectory(SourcePath, path);
 				ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
-			}
-			catch (DirectoryNotFoundException)
-			{
-				throw;
-			}
-
-			catch (DriveNotFoundException)
-			{
-				throw;
-
-			}
-			catch (Exception)
-			{
-				throw;
 			}
 			finally
 			{

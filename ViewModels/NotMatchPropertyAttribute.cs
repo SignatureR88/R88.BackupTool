@@ -18,7 +18,16 @@ namespace R88.BackupTool.ViewModels
 				return new ValidationResult($"プロパティ '{_targetProperty}' が見つかりません。");
 			}
 			var targetValue = targetPropertyInfo.GetValue(validationContext.ObjectInstance);
-			if (string.Equals(value?.ToString(), targetValue?.ToString(), StringComparison.OrdinalIgnoreCase))
+			var valueString = value?.ToString();
+			var targetValueString = targetValue?.ToString();
+
+			// 空文字やnullの場合はバリデーションをスキップする
+			if (string.IsNullOrWhiteSpace(valueString) || string.IsNullOrWhiteSpace(targetValueString))
+			{
+				return ValidationResult.Success;
+			}
+
+			if (string.Equals(valueString, targetValueString, StringComparison.OrdinalIgnoreCase))
 			{
 				return new ValidationResult(ErrorMessage);
 			}

@@ -4,9 +4,10 @@ using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Security;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows;
+using System.Security;
 
 
 namespace R88.BackupTool.ViewModels
@@ -57,10 +58,7 @@ namespace R88.BackupTool.ViewModels
 
 		private TimeSpan _interval;
 
-		/// <summary>
-		/// フォルダパスとIntervalの設定を保存するJsonファイルのパス
-		/// </summary>
-		private readonly string _appDataFileName = Path.Combine(AppContext.BaseDirectory, "appdata.json");
+		private readonly string _appDataFilePath;
 		private readonly JsonSerializerOptions _jsonOps = new() { WriteIndented = true };
 		
 
@@ -68,24 +66,51 @@ namespace R88.BackupTool.ViewModels
 		{
 			_model = new BackupToolModel();
 			CurrentState = new InitialState();
-			SourcePath = _model.SourcePath;
-			DestinationPath = _model.DestinationPath;
 			_selectedIndex = 1;
 			SelectedInterval = IntervalCmbSource[_selectedIndex];
 			_interval = SelectedInterval.Value;
+			string _roming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+			string _productName = Assembly.GetExecutingAssembly().GetName().Name ?? "R88.BackupTool";
+			string _appDataFileName = "appdata.json";
+			_appDataFilePath = Path.Combine(_roming, _productName, _appDataFileName);
 		}
 
 		partial void OnSourcePathChanged(string value)
 		{
-			ValidateProperty(DestinationPath, nameof(DestinationPath));
-			_model.SourcePath = value;
+			// 正規化されたフルパスをバックフィールドに格納する
+			try
+			{
+				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value);
+				_sourcePath = full;
+				_model.SourcePath = full;
+			}
+			catch
+			{
+				// Path.GetFullPath が失敗した場合は受け取った値をそのまま使用する
+				_sourcePath = value;
+				_model.SourcePath = value;
+			}
 
-			CurrentState.ChangeState(this);			
+			// DestinationPath のバリデーションは正規化後の SourcePath を使って行う
+			ValidateProperty(DestinationPath, nameof(DestinationPath));
+
+			CurrentState.ChangeState(this);
 		}
 
 		partial void OnDestinationPathChanged(string value)
 		{
-			_model.DestinationPath = value;
+			// 正規化されたフルパスをバックフィールドに格納する
+			try
+			{
+				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value);
+				_destinationPath = full;
+				_model.DestinationPath = full;
+			}
+			catch
+			{
+				_destinationPath = value;
+				_model.DestinationPath = value;
+			}
 
 			CurrentState.ChangeState(this);
 		}
@@ -127,7 +152,7 @@ namespace R88.BackupTool.ViewModels
 				_cts = new CancellationTokenSource();
 				try
 				{
-					CurrentState = new BackingUpState();
+					CurrentState.ChangeState(this);
 					await Task.Run(() => _model.Backup());
 					CurrentState.ChangeState(this);
 					await Task.Delay(_interval, _cts.Token);
@@ -183,7 +208,13 @@ namespace R88.BackupTool.ViewModels
 			var json = JsonSerializer.Serialize(appData, _jsonOps);
 			try
 			{
-				File.WriteAllText(_appDataFileName, json);
+				string appDataDir = Path.GetDirectoryName(_appDataFilePath) ?? 
+					throw new InvalidOperationException("appDataFilePath が null かディレクトリ部分が取得できません。");
+				if(!Directory.Exists(appDataDir))
+				{
+					Directory.CreateDirectory(appDataDir);
+				}
+				File.WriteAllText(_appDataFilePath, json);
 			}
 			catch (IOException ex)
 			{
@@ -200,17 +231,20 @@ namespace R88.BackupTool.ViewModels
 		{
 			try
 			{
-				if (File.Exists(_appDataFileName))
+				if (File.Exists(_appDataFilePath))
 				{
-					var json = File.ReadAllText(_appDataFileName);
+					var json = File.ReadAllText(_appDataFilePath);
 					var addData = JsonSerializer.Deserialize<AppDatas>(json);
 
 					if (addData != null)
 					{
 						DestinationPath = addData.DestinationPath;
 						SourcePath = addData.SourcePath;
-						_selectedIndex = addData.SelectedIndex;
-						SelectedInterval = IntervalCmbSource[_selectedIndex];
+						if (addData.SelectedIndex >= 0 && addData.SelectedIndex < IntervalCmbSource.Count)
+						{
+							_selectedIndex = addData.SelectedIndex;
+							SelectedInterval = IntervalCmbSource[_selectedIndex];
+						}
 					}
 				}
 			}

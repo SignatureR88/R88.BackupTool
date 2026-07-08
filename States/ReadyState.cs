@@ -19,6 +19,10 @@ namespace R88.BackupTool.States
 			{
 				context.CurrentState = new InitialState();
 			}
+			else
+			{
+				context.CurrentState = new BackingUpState();
+			}
 		}
 	}
 }
