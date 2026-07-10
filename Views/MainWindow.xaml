@@ -1,0 +1,101 @@
+﻿<Window x:Class="R88.BackupTool.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:local="clr-namespace:R88.BackupTool"
+        xmlns:vm="clr-namespace:R88.BackupTool.ViewModels"
+        mc:Ignorable="d"
+        Title="R88 BackupTool" Height="300" Width="400" FontSize="14"
+        ResizeMode="NoResize">
+    <Window.DataContext>
+        <vm:MainWindowViewModel/>
+    </Window.DataContext>
+    <Window.Resources>
+        <ControlTemplate x:Key="ValidationErrorTemplate">
+            <StackPanel>
+                <AdornedElementPlaceholder x:Name="adornedelem" />
+                <TextBlock Foreground="Red" FontSize="12" Text="{Binding AdornedElement.(Validation.Errors)[0].ErrorContent, ElementName=adornedelem}" />
+            </StackPanel>
+        </ControlTemplate>
+    </Window.Resources>
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Closing">
+            <i:InvokeCommandAction Command="{Binding SaveAppDataCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+
+    <Grid>
+        <DockPanel>
+            <Menu DockPanel.Dock="Top">
+                <MenuItem Header="ファイル(_F)">
+                    <MenuItem Header="前回のデータをロード" Command="{Binding LoadPreviouseCommand}" />
+                    <MenuItem Header="終了(_X)" Command="{Binding ExitCommand}"/>
+                </MenuItem>
+            </Menu>
+            <StatusBar DockPanel.Dock="Bottom">
+                <StatusBarItem>
+                    <TextBlock Text="{Binding AppStatus}" />
+                </StatusBarItem>
+            </StatusBar>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+ 
+ <!--   ++++++++++++ Set Source/Destination Dir +++++++++++++    -->
+
+                <StackPanel Orientation="Vertical" Margin="20 0" Grid.Row="0" VerticalAlignment="Center">
+                    <TextBlock Text="バックアップ元フォルダ："/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="1" Content="…" Command="{Binding SetSourcePathCommand}" />
+                    </Grid>
+                    <TextBlock Margin="0 20 0 0" Text="バックアップ先フォルダ："/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="30"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding DestinationPath, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                                 Validation.ErrorTemplate="{StaticResource ValidationErrorTemplate}" />
+                        <Button Grid.Column="1" Content="…" Command="{Binding SetDestinationPathCommand}" />
+                    </Grid>
+                </StackPanel>
+                
+                
+                
+ <!--   ++++++++++++++++ Control +++++++++++++++        -->
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="20 0">
+                        <TextBlock Text="Interval:" />
+                        <ComboBox Margin="5 0" Width="70"
+                                  ItemsSource="{Binding IntervalCmbSource}"
+                                  DisplayMemberPath="Text"
+                                  SelectedItem="{Binding SelectedInterval}"
+                                  IsEnabled="{Binding IsIntervalCmbEnabled}">
+                        </ComboBox>
+                    </StackPanel>
+                    <Button Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center"
+                            Content="開始" Width="80" Height="80" Command="{Binding BackupRunCommand}"/>
+                    <Button Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0 0 20 0"
+                            Content="停止" Width="80" Height="80" Command="{Binding StopCommand}"/>
+                    
+
+                </Grid>
+
+            </Grid>
+        </DockPanel>
+    </Grid>
+</Window>
