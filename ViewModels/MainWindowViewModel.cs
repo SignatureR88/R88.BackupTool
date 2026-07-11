@@ -7,7 +7,6 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
-using System.Security;
 
 
 namespace R88.BackupTool.ViewModels
@@ -80,7 +79,9 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string full = string.IsNullOrWhiteSpace(value) ? value : 
+					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
 				_sourcePath = full;
 				_model.SourcePath = full;
 			}
@@ -102,7 +103,9 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string full = string.IsNullOrWhiteSpace(value) ? value : 
+					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
 				_destinationPath = full;
 				_model.DestinationPath = full;
 			}
@@ -175,6 +178,12 @@ namespace R88.BackupTool.ViewModels
 				{
 					CurrentState = new ReadyState();
 					MessageBox.Show(ex.Message, "Drive Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
+					break;
+				}
+				catch (IOException ex)
+				{
+					CurrentState = new ReadyState();
+					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				catch (Exception ex)
