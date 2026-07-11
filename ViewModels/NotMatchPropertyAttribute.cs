@@ -24,13 +24,7 @@ namespace R88.BackupTool.ViewModels
 			if (string.IsNullOrWhiteSpace(valueString) || string.IsNullOrWhiteSpace(targetValueString))
 			{
 				return ValidationResult.Success;
-			}
-
-			// UNCパスの判定
-			if (IsUncPath(valueString))
-			{ 
-				return new ValidationResult("UNCパスはサポートされていません。");
-			}
+			}		
 
 			if (string.Equals(valueString, targetValueString, StringComparison.OrdinalIgnoreCase))
 			{
@@ -40,19 +34,5 @@ namespace R88.BackupTool.ViewModels
 			return ValidationResult.Success;
 		}
 
-		/// <summary>
-		/// 渡されたパスがUNCパスかどうかを判定する
-		/// </summary>
-		/// <param name="path">対象のパス</param>
-		/// <returns>UNCパス->true/ローカルパス->false</returns>
-		private static bool IsUncPath(string path)
-		{
-			if(Uri.TryCreate(path, UriKind.RelativeOrAbsolute, out Uri? valueUriResult))
-			{
-				return valueUriResult.IsUnc;
-			}
-
-			return false;
-		}
 	}
 }
