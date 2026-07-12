@@ -1,6 +1,9 @@
 ﻿namespace R88.BackupTool.ViewModels
 {
-    interface IAppState
+	/// <summary>
+	/// アプリケーションの状態を表すインターフェース
+	/// </summary>
+	interface IAppState
     {
         string StatusMessage { get; }
         bool IsIntervalCmbEnabled { get => true; } 

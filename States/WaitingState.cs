@@ -2,6 +2,9 @@
 
 namespace R88.BackupTool.States
 {
+	/// <summary>
+	/// 待機状態クラス
+	/// </summary>
 	internal class WaitingState : IAppState
 	{
 		public string StatusMessage => "待機中";

@@ -2,6 +2,9 @@
 
 namespace R88.BackupTool.States
 {
+	/// <summary>
+	/// 準備完了状態クラス
+	/// </summary>
 	internal class ReadyState : IAppState
 	{
 		public string StatusMessage => "準備完了";
@@ -15,7 +18,7 @@ namespace R88.BackupTool.States
 
 		public void ChangeState(MainWindowViewModel context)
 		{
-			if (context.IsSamePath() || !context.IsFilled() || !context.IsUnc())
+			if (context.IsSamePath() || !context.IsFilled() || !context.IsUncPath())
 			{
 				context.CurrentState = new InitialState();
 			}

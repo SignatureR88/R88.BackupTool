@@ -2,6 +2,9 @@
 
 namespace R88.BackupTool.States
 {
+	/// <summary>
+	/// 初期状態クラス
+	/// </summary>
 	internal class InitialState : IAppState
 	{
 		public string StatusMessage => "フォルダが未指定です。";
@@ -16,7 +19,7 @@ namespace R88.BackupTool.States
 
 		public void ChangeState(MainWindowViewModel context)
 		{
-			if (context.IsFilled() && !context.IsSamePath() && !context.IsUnc())
+			if (context.IsFilled() && !context.IsSamePath() && !context.IsUncPath())
 			{
 				context.CurrentState = new ReadyState();
 			}

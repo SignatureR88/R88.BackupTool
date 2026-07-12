@@ -2,11 +2,12 @@
 
 namespace R88.BackupTool.ViewModels
 {
+	/// <summary>
+	/// 指定したプロパティと値が一致しないことを検証するカスタムバリデーション属性
+	/// </summary>
+	/// <param name="targetProperty">比較対象のプロパティ名</param>
 	internal class NotMatchPropertyAttribute(string targetProperty) : ValidationAttribute
 	{
-		/// <summary>
-		/// 比較対象のプロパティ名
-		/// </summary>
 		private readonly string _targetProperty = targetProperty;
 
 		protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)

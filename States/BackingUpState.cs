@@ -2,6 +2,9 @@
 
 namespace R88.BackupTool.States
 {
+	/// <summary>
+	/// バックアップ中状態クラス
+	/// </summary>
 	internal class BackingUpState : IAppState
 	{
 		public string StatusMessage => "バックアップ中...";

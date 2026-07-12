@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
@@ -69,6 +68,8 @@ namespace R88.BackupTool.ViewModels
 			_selectedIndex = 1;
 			SelectedInterval = IntervalCmbSource[_selectedIndex];
 			_interval = SelectedInterval.Value;
+
+			// アプリケーションデータの保存先を決定する
 			string _roming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 			string _productName = Assembly.GetExecutingAssembly().GetName().Name ?? "R88.BackupTool";
 			string _appDataFileName = "appdata.json";
@@ -127,39 +128,56 @@ namespace R88.BackupTool.ViewModels
 			_selectedIndex = IntervalCmbSource.IndexOf(value);
 		}
 
+		/// <summary>
+		/// SourcePath と DestinationPath が両方とも空でないかを確認する
+		/// </summary>
+		/// <returns>空でない場合はtrue、それ以外の場合はfalse</returns>
 		public bool IsFilled()
 		{
 			return !string.IsNullOrWhiteSpace(SourcePath) && !string.IsNullOrWhiteSpace(DestinationPath);
 		}
 
+		/// <summary>
+		/// SourcePath と DestinationPath が同じパスかどうかを確認する
+		/// </summary>
+		/// <returns>同じ場合はtrue、異なる場合はfalse</returns>
 		public bool IsSamePath()
 		{
 			return string.Equals(SourcePath, DestinationPath, StringComparison.OrdinalIgnoreCase);
 		}
 
-		public bool IsUnc()
+		/// <summary>
+		/// SourcePath または DestinationPath が UNC パスかどうかを確認する
+		/// </summary>
+		/// <returns>UNCパスの場合true、その他の場合false</returns>
+		public bool IsUncPath()
 		{
-			if (Uri.TryCreate(SourcePath, UriKind.RelativeOrAbsolute, out Uri? sourceUri) &&
-				Uri.TryCreate(DestinationPath, UriKind.RelativeOrAbsolute, out Uri? destinationUri))
-			{
-				return (sourceUri.IsAbsoluteUri && sourceUri.IsUnc) || (destinationUri.IsAbsoluteUri && destinationUri.IsUnc);
-			}
-			return false;
+			return UncPathHelper.IsUnc(SourcePath) || UncPathHelper.IsUnc(DestinationPath);
 		}
 
 		#region Commands
+		/// <summary>
+		/// バックアップ元フォルダを選択するコマンド
+		/// </summary>
 		[RelayCommand(CanExecute = nameof(CanExecuteSetPath))]
 		public void SetSourcePath()
 		{
 			SourcePath = BackupToolModel.GetDirectoryPath(SourcePath);
 		}
 
+		/// <summary>
+		/// バックアップ先フォルダを選択するコマンド
+		/// </summary>
 		[RelayCommand(CanExecute = nameof(CanExecuteSetPath))]
 		public void SetDestinationPath()
 		{
 			DestinationPath = BackupToolModel.GetDirectoryPath(DestinationPath);
 		}
 
+		/// <summary>
+		/// バックアップを実行するコマンド
+		/// </summary>
+		/// <returns>なし</returns>
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
 		public async Task BackupRun() 
 		{
@@ -211,10 +229,17 @@ namespace R88.BackupTool.ViewModels
 			}while (true);
 			
 		}
-
+		
+		/// <summary>
+		/// バックアップ処理を停止するコマンド
+		/// </summary>
 		[RelayCommand(CanExecute = nameof(CanExecuteStop))]
 		public void Stop()  => _cts?.Cancel();
 
+		/// <summary>
+		/// 設定を保存するコマンド
+		/// </summary>
+		/// <exception cref="InvalidOperationException">保存用ファイルのパスが不正な場合スローされる</exception>
 		[RelayCommand(CanExecute = nameof(CanExecuteSaveAppDatas))]
 		public void SaveAppData()
 		{
@@ -248,6 +273,9 @@ namespace R88.BackupTool.ViewModels
 			}
 		}
 
+		/// <summary>
+		/// 設定を読み込むコマンド
+		/// </summary>
 		[RelayCommand(CanExecute = nameof(CanExecuteLoadPrevious))]
 		public void LoadPreviouse()
 		{
@@ -276,14 +304,20 @@ namespace R88.BackupTool.ViewModels
 			}
 		}
 
+		/// <summary>
+		/// アプリを終了するコマンド
+		/// </summary>
 		[RelayCommand(CanExecute = nameof(CanExecuteExit))]
 		public static void Exit() 
 		{ 
 			Application.Current.Shutdown(); 
-		} 
+		}
 
 		#endregion
 
+		/// <summary>
+		/// コマンドの実行可否等を決定するためのメソッド群
+		/// </summary>
 		#region CanExecutes
 		public string AppStatus => CurrentState.StatusMessage;
 		public bool IsIntervalCmbEnabled => CurrentState.IsIntervalCmbEnabled;

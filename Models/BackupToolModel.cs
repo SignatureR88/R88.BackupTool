@@ -5,10 +5,22 @@ namespace R88.BackupTool.Models
 {
 	internal class BackupToolModel
 	{
+		/// <summary>
+		/// バックアップ元のパス
+		/// </summary>
 		public string SourcePath { get; set; } = string.Empty;
 
+		/// <summary>
+		/// バックアップ先のパス
+		/// </summary>
 		public string DestinationPath { get; set; } = string.Empty;
 
+		/// <summary>
+		/// OpenFolderDialogを使用してフォルダパスを取得するメソッド
+		/// </summary>
+		/// <param name="path">元のパス</param>
+		/// <returns>ダイアログで選択されたパスを返す。
+		/// キャンセル時は元のパスを返し、元のパスがない場合は空文字列を返す。</returns>
 		public static string GetDirectoryPath(string path)
 		{
 			var ofd = new Microsoft.Win32.OpenFolderDialog();
@@ -103,6 +115,11 @@ namespace R88.BackupTool.Models
 			
 			foreach (FileInfo file in dir.GetFiles())
 			{
+				// ジャンクション／シンボリックリンクはスキップ
+				if (file.Attributes.HasFlag(FileAttributes.ReparsePoint))
+				{
+					continue;
+				}
 				string targetFilePath = Path.Combine(destinationDir, file.Name);
 				file.CopyTo(targetFilePath);
 			}
