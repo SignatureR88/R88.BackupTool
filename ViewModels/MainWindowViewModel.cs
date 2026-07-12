@@ -142,7 +142,7 @@ namespace R88.BackupTool.ViewModels
 			if (Uri.TryCreate(SourcePath, UriKind.RelativeOrAbsolute, out Uri? sourceUri) &&
 				Uri.TryCreate(DestinationPath, UriKind.RelativeOrAbsolute, out Uri? destinationUri))
 			{
-				return (sourceUri.IsAbsoluteUri && sourceUri.IsUnc) && (destinationUri.IsAbsoluteUri && destinationUri.IsUnc);
+				return (sourceUri.IsAbsoluteUri && sourceUri.IsUnc) || (destinationUri.IsAbsoluteUri && destinationUri.IsUnc);
 			}
 			return false;
 		}
