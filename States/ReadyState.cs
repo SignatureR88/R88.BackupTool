@@ -15,7 +15,7 @@ namespace R88.BackupTool.States
 
 		public void ChangeState(MainWindowViewModel context)
 		{
-			if (context.IsSamePath() || !context.IsFilled() || !context.IsUnc())
+			if (context.IsSamePath() || !context.IsFilled())
 			{
 				context.CurrentState = new InitialState();
 			}

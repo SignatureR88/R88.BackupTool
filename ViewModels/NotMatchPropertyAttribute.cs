@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.IO;
+using System.ComponentModel.DataAnnotations;
 
 namespace R88.BackupTool.ViewModels
 {
@@ -24,7 +25,7 @@ namespace R88.BackupTool.ViewModels
 			if (string.IsNullOrWhiteSpace(valueString) || string.IsNullOrWhiteSpace(targetValueString))
 			{
 				return ValidationResult.Success;
-			}		
+			}
 
 			if (string.Equals(valueString, targetValueString, StringComparison.OrdinalIgnoreCase))
 			{
@@ -33,6 +34,5 @@ namespace R88.BackupTool.ViewModels
 
 			return ValidationResult.Success;
 		}
-
 	}
 }

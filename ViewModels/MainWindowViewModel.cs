@@ -3,11 +3,11 @@ using CommunityToolkit.Mvvm.Input;
 using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
+using System.Security;
 
 
 namespace R88.BackupTool.ViewModels
@@ -80,9 +80,7 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : 
-					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
+				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				_sourcePath = full;
 				_model.SourcePath = full;
 			}
@@ -104,9 +102,7 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : 
-					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
+				string full = string.IsNullOrWhiteSpace(value) ? value : Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				_destinationPath = full;
 				_model.DestinationPath = full;
 			}
@@ -135,16 +131,6 @@ namespace R88.BackupTool.ViewModels
 		public bool IsSamePath()
 		{
 			return string.Equals(SourcePath, DestinationPath, StringComparison.OrdinalIgnoreCase);
-		}
-
-		public bool IsUnc()
-		{
-			if (Uri.TryCreate(SourcePath, UriKind.RelativeOrAbsolute, out Uri? sourceUri) &&
-				Uri.TryCreate(DestinationPath, UriKind.RelativeOrAbsolute, out Uri? destinationUri))
-			{
-				return (sourceUri.IsAbsoluteUri && sourceUri.IsUnc) || (destinationUri.IsAbsoluteUri && destinationUri.IsUnc);
-			}
-			return false;
 		}
 
 		#region Commands
@@ -189,12 +175,6 @@ namespace R88.BackupTool.ViewModels
 				{
 					CurrentState = new ReadyState();
 					MessageBox.Show(ex.Message, "Drive Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-					break;
-				}
-				catch (IOException ex)
-				{
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				catch (Exception ex)
