@@ -7,7 +7,7 @@ namespace R88.BackupTool.ViewModels
 	{
 		public override ValidationResult? Validate(object value, CultureInfo cultureInfo)
 		{
-			var valueString = value.ToString() ?? string.Empty;
+			var valueString = value?.ToString() ?? string.Empty;
 			// UNCパスの判定
 			if (IsUncPath(valueString))
 			{

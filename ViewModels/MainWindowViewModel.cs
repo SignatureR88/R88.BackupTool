@@ -137,6 +137,16 @@ namespace R88.BackupTool.ViewModels
 			return string.Equals(SourcePath, DestinationPath, StringComparison.OrdinalIgnoreCase);
 		}
 
+		public bool IsUnc()
+		{
+			if (Uri.TryCreate(SourcePath, UriKind.RelativeOrAbsolute, out Uri? sourceUri) &&
+				Uri.TryCreate(DestinationPath, UriKind.RelativeOrAbsolute, out Uri? destinationUri))
+			{
+				return (sourceUri.IsAbsoluteUri && sourceUri.IsUnc) && (destinationUri.IsAbsoluteUri && destinationUri.IsUnc);
+			}
+			return false;
+		}
+
 		#region Commands
 		[RelayCommand(CanExecute = nameof(CanExecuteSetPath))]
 		public void SetSourcePath()
