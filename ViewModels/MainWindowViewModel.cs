@@ -177,7 +177,7 @@ namespace R88.BackupTool.ViewModels
 		/// <summary>
 		/// バックアップを実行するコマンド
 		/// </summary>
-		/// <returns>なし</returns>
+		/// <returns>Taskの終了</returns>
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
 		public async Task BackupRun() 
 		{
@@ -315,9 +315,7 @@ namespace R88.BackupTool.ViewModels
 
 		#endregion
 
-		/// <summary>
-		/// コマンドの実行可否等を決定するためのメソッド群
-		/// </summary>
+		// コマンドの実行可否等を決定するためのメソッド群		
 		#region CanExecutes
 		public string AppStatus => CurrentState.StatusMessage;
 		public bool IsIntervalCmbEnabled => CurrentState.IsIntervalCmbEnabled;
