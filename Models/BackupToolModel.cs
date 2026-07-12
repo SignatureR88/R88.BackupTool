@@ -109,6 +109,7 @@ namespace R88.BackupTool.Models
 
 			foreach (DirectoryInfo subDir in dirs)
 			{
+				// ジャンクション／シンボリックリンクはスキップ
 				if(subDir.Attributes.HasFlag(FileAttributes.ReparsePoint))
 				{
 					continue;

@@ -54,7 +54,15 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="30"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Grid.Column="0" IsReadOnly="True" Validation.ErrorTemplate="{StaticResource ValidationErrorTemplate}" >
+                            <TextBox.Text>
+                                <Binding Path="SourcePath" UpdateSourceTrigger="PropertyChanged" ValidatesOnDataErrors="True">
+                                    <Binding.ValidationRules>
+                                        <vm:NotUncValidationRule ValidatesOnTargetUpdated="True" />
+                                    </Binding.ValidationRules>
+                                </Binding>
+                            </TextBox.Text>
+                        </TextBox>
                         <Button Grid.Column="1" Content="…" Command="{Binding SetSourcePathCommand}" />
                     </Grid>
                     <TextBlock Margin="0 20 0 0" Text="バックアップ先フォルダ："/>
@@ -63,8 +71,15 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="30"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" IsReadOnly="True" Text="{Binding DestinationPath, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
-                                 Validation.ErrorTemplate="{StaticResource ValidationErrorTemplate}" />
+                        <TextBox Grid.Column="0" IsReadOnly="True" Validation.ErrorTemplate="{StaticResource ValidationErrorTemplate}">
+                            <TextBox.Text>
+                                <Binding Path="DestinationPath" UpdateSourceTrigger="PropertyChanged" ValidatesOnDataErrors="True">
+                                    <Binding.ValidationRules>
+                                        <vm:NotUncValidationRule ValidatesOnTargetUpdated="True" />
+                                    </Binding.ValidationRules>
+                                </Binding>
+                            </TextBox.Text>
+                        </TextBox>
                         <Button Grid.Column="1" Content="…" Command="{Binding SetDestinationPathCommand}" />
                     </Grid>
                 </StackPanel>
