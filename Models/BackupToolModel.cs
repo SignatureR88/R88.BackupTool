@@ -101,6 +101,7 @@ namespace R88.BackupTool.Models
 		/// <param name="sourceDir">コピー元</param>
 		/// <param name="destinationDir">コピー先</param>
 		/// <exception cref="DirectoryNotFoundException">コピー元が存在しない例外</exception>
+		/// <exception cref="IOException">コピー元がジャンクション／シンボリックリンクの場合にスローされる例外</exception>
 		private static void CopyDirectory(string sourceDir, string destinationDir)
 		{
 			var dir = new DirectoryInfo(sourceDir);
@@ -109,6 +110,12 @@ namespace R88.BackupTool.Models
 				throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
 			}
 
+
+			// ソースディレクトリ自体がジャンクション／シンボリックリンクの場合は拒否
+			if (dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+			{
+				throw new IOException($"Source directory is a junction or symbolic link and is not supported: {dir.FullName}");
+			}
 			DirectoryInfo[] dirs = dir.GetDirectories();
 			
 			Directory.CreateDirectory(destinationDir);
