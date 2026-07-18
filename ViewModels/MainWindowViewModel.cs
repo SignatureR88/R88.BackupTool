@@ -38,7 +38,8 @@ namespace R88.BackupTool.ViewModels
 
 		[ObservableProperty]
 		[NotifyPropertyChangedFor(nameof(AppStatus))]
-		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnabled))]
+		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnable))]
+		[NotifyPropertyChangedFor(nameof(IsCDTimerVisible))]
 		[NotifyCanExecuteChangedFor(nameof(SetSourcePathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(SetDestinationPathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(BackupRunCommand))]
@@ -47,6 +48,9 @@ namespace R88.BackupTool.ViewModels
 		[NotifyCanExecuteChangedFor(nameof(LoadPreviouseCommand))]
 		[NotifyCanExecuteChangedFor(nameof(ExitCommand))]
 		private IAppState _currentState;
+
+		[ObservableProperty]
+		private string _countDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
 		#endregion
 
 		private readonly BackupToolModel _model;
@@ -181,6 +185,7 @@ namespace R88.BackupTool.ViewModels
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
 		public async Task BackupRun() 
 		{
+			bool isLooped = true;
 			do
 			{
 				_cts = new CancellationTokenSource();
@@ -188,12 +193,18 @@ namespace R88.BackupTool.ViewModels
 				{
 					CurrentState.ChangeState(this);
 					await Task.Run(() => _model.Backup());
+					int timeleft = (int)_interval.TotalSeconds;
 					CurrentState.ChangeState(this);
-					await Task.Delay(_interval, _cts.Token);
+					while (timeleft > 0) { 	
+						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
+						await Task.Delay(1000, _cts.Token);
+						timeleft--;	
+					}
 				}
 				catch (TaskCanceledException)
 				{
 					CurrentState = new ReadyState();
+					isLooped = false;
 					break;
 				}
 				catch (DirectoryNotFoundException ex)
@@ -226,7 +237,7 @@ namespace R88.BackupTool.ViewModels
 					_cts.Dispose();
 					_cts = null;
 				}
-			}while (true);
+			}while (isLooped);
 			
 		}
 		
@@ -318,7 +329,8 @@ namespace R88.BackupTool.ViewModels
 		// コマンドの実行可否等を決定するためのメソッド群		
 		#region CanExecutes
 		public string AppStatus => CurrentState.StatusMessage;
-		public bool IsIntervalCmbEnabled => CurrentState.IsIntervalCmbEnabled;
+		public bool IsIntervalCmbEnable => CurrentState.IsIntervalCmbEnable;
+		public bool IsCDTimerVisible => CurrentState.IsCDTimerVisible;
 		private bool CanExecuteSetPath() => CurrentState.CanExecuteSetPath();
 		private bool CanExecuteBackup() => CurrentState.CanExecuteBackup();
 		private bool CanExecuteStop() => CurrentState.CanExecuteStop();

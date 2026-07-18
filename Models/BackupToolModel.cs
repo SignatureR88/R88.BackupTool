@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 
 namespace R88.BackupTool.Models
@@ -83,8 +84,10 @@ namespace R88.BackupTool.Models
 				}
 
 				string path = Path.Combine(tempDir, sourceDirectoryName);
-				CopyDirectory(SourcePath, path);
-				ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+				//CopyDirectory(SourcePath, path);
+				//ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+
+				Debug.Print(backupDirectoryPath);
 			}
 			finally
 			{
@@ -109,7 +112,6 @@ namespace R88.BackupTool.Models
 			{
 				throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
 			}
-
 
 			// ソースディレクトリ自体がジャンクション／シンボリックリンクの場合は拒否
 			if (dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
