@@ -84,10 +84,10 @@ namespace R88.BackupTool.Models
 				}
 
 				string path = Path.Combine(tempDir, sourceDirectoryName);
-				//CopyDirectory(SourcePath, path);
-				//ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+				CopyDirectory(SourcePath, path);
+				ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
 
-				Debug.Print(backupDirectoryPath);
+				//Debug.Print(backupDirectoryPath);
 			}
 			finally
 			{
