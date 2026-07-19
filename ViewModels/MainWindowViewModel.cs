@@ -199,6 +199,7 @@ namespace R88.BackupTool.ViewModels
 						await Task.Delay(1000, _cts.Token);
 						timeleft--;	
 					}
+					CountDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
 				}
 				catch (TaskCanceledException)
 				{
