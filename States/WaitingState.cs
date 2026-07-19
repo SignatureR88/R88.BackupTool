@@ -8,7 +8,7 @@ namespace R88.BackupTool.States
 	internal class WaitingState : IAppState
 	{
 		public string StatusMessage => "次のバックアップまで";
-		public bool IsIntervalCmbEnable => false;
+		public bool IsIntervalCmbEnabled => false;
 		public bool IsCDTimerVisible => true;
 		public bool CanExecuteSetPath() => false;
 		public bool CanExecuteBackup() => false;

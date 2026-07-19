@@ -38,7 +38,7 @@ namespace R88.BackupTool.ViewModels
 
 		[ObservableProperty]
 		[NotifyPropertyChangedFor(nameof(AppStatus))]
-		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnable))]
+		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnabled))]
 		[NotifyPropertyChangedFor(nameof(IsCDTimerVisible))]
 		[NotifyCanExecuteChangedFor(nameof(SetSourcePathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(SetDestinationPathCommand))]
@@ -185,7 +185,6 @@ namespace R88.BackupTool.ViewModels
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
 		public async Task BackupRun() 
 		{
-			bool isLooped = true;
 			do
 			{
 				_cts = new CancellationTokenSource();
@@ -204,7 +203,6 @@ namespace R88.BackupTool.ViewModels
 				catch (TaskCanceledException)
 				{
 					CurrentState = new ReadyState();
-					isLooped = false;
 					break;
 				}
 				catch (DirectoryNotFoundException ex)
@@ -237,7 +235,7 @@ namespace R88.BackupTool.ViewModels
 					_cts.Dispose();
 					_cts = null;
 				}
-			}while (isLooped);
+			}while (true);
 			
 		}
 		
@@ -329,7 +327,7 @@ namespace R88.BackupTool.ViewModels
 		// コマンドの実行可否等を決定するためのメソッド群		
 		#region CanExecutes
 		public string AppStatus => CurrentState.StatusMessage;
-		public bool IsIntervalCmbEnable => CurrentState.IsIntervalCmbEnable;
+		public bool IsIntervalCmbEnabled => CurrentState.IsIntervalCmbEnabled;
 		public bool IsCDTimerVisible => CurrentState.IsCDTimerVisible;
 		private bool CanExecuteSetPath() => CurrentState.CanExecuteSetPath();
 		private bool CanExecuteBackup() => CurrentState.CanExecuteBackup();

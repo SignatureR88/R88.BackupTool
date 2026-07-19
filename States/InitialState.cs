@@ -8,7 +8,7 @@ namespace R88.BackupTool.States
 	internal class InitialState : IAppState
 	{
 		public string StatusMessage => "フォルダが未指定です。";
-		public bool IsIntervalCmbEnable => true;
+		public bool IsIntervalCmbEnabled => true;
 		public bool IsCDTimerVisible => false;
 		public bool CanExecuteSetPath() => true;
 		public bool CanExecuteBackup() => false;

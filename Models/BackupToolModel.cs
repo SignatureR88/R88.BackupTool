@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.IO;
+﻿using System.IO;
 using System.IO.Compression;
 
 namespace R88.BackupTool.Models
@@ -87,7 +86,6 @@ namespace R88.BackupTool.Models
 				CopyDirectory(SourcePath, path);
 				ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
 
-				//Debug.Print(backupDirectoryPath);
 			}
 			finally
 			{

@@ -104,7 +104,7 @@
                                   ItemsSource="{Binding IntervalCmbSource}"
                                   DisplayMemberPath="Text"
                                   SelectedItem="{Binding SelectedInterval}"
-                                  IsEnabled="{Binding IsIntervalCmbEnable}">
+                                  IsEnabled="{Binding IsIntervalCmbEnabled}">
                         </ComboBox>
                     </StackPanel>
                     <Button Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center"
