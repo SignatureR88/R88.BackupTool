@@ -39,6 +39,7 @@ namespace R88.BackupTool.ViewModels
 		[ObservableProperty]
 		[NotifyPropertyChangedFor(nameof(AppStatus))]
 		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnabled))]
+		[NotifyPropertyChangedFor(nameof(IsCDTimerVisible))]
 		[NotifyCanExecuteChangedFor(nameof(SetSourcePathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(SetDestinationPathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(BackupRunCommand))]
@@ -47,6 +48,9 @@ namespace R88.BackupTool.ViewModels
 		[NotifyCanExecuteChangedFor(nameof(LoadPreviouseCommand))]
 		[NotifyCanExecuteChangedFor(nameof(ExitCommand))]
 		private IAppState _currentState;
+
+		[ObservableProperty]
+		private string _countDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
 		#endregion
 
 		private readonly BackupToolModel _model;
@@ -188,8 +192,14 @@ namespace R88.BackupTool.ViewModels
 				{
 					CurrentState.ChangeState(this);
 					await Task.Run(() => _model.Backup());
+					int timeleft = (int)_interval.TotalSeconds;
 					CurrentState.ChangeState(this);
-					await Task.Delay(_interval, _cts.Token);
+					while (timeleft > 0) { 	
+						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
+						await Task.Delay(1000, _cts.Token);
+						timeleft--;	
+					}
+					CountDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
 				}
 				catch (TaskCanceledException)
 				{
@@ -319,6 +329,7 @@ namespace R88.BackupTool.ViewModels
 		#region CanExecutes
 		public string AppStatus => CurrentState.StatusMessage;
 		public bool IsIntervalCmbEnabled => CurrentState.IsIntervalCmbEnabled;
+		public bool IsCDTimerVisible => CurrentState.IsCDTimerVisible;
 		private bool CanExecuteSetPath() => CurrentState.CanExecuteSetPath();
 		private bool CanExecuteBackup() => CurrentState.CanExecuteBackup();
 		private bool CanExecuteStop() => CurrentState.CanExecuteStop();

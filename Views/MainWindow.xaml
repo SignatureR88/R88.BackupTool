@@ -19,6 +19,7 @@
                 <TextBlock Foreground="Red" FontSize="12" Text="{Binding AdornedElement.(Validation.Errors)[0].ErrorContent, ElementName=adornedelem}" />
             </StackPanel>
         </ControlTemplate>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Closing">
@@ -35,8 +36,12 @@
                 </MenuItem>
             </Menu>
             <StatusBar DockPanel.Dock="Bottom">
-                <StatusBarItem>
+                <StatusBarItem HorizontalAlignment="Left">
                     <TextBlock Text="{Binding AppStatus}" />
+                </StatusBarItem>
+                <StatusBarItem HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding CountDownTimer}"
+                               Visibility="{Binding IsCDTimerVisible, Converter={StaticResource BoolToVis}}" />
                 </StatusBarItem>
             </StatusBar>
             <Grid>

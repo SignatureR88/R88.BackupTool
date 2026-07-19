@@ -9,6 +9,7 @@ namespace R88.BackupTool.States
 	{
 		public string StatusMessage => "準備完了";
 		public bool IsIntervalCmbEnabled => true;
+		public bool IsCDTimerVisible => false;
 		public bool CanExecuteSetPath() => true;
 		public bool CanExecuteBackup() => true;
 		public bool CanExecuteStop() => false;
