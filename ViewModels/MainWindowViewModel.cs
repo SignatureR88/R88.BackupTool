@@ -204,39 +204,25 @@ namespace R88.BackupTool.ViewModels
 						timeleft--;	
 					}
 				}
+
 				catch (TaskCanceledException)
 				{
 					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
 					break;
 				}
-				catch (DirectoryNotFoundException ex)
-				{
-					CurrentSBControl = new EmptyViewModel();
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Directory Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-					break;
-				}
 
-				catch (DriveNotFoundException ex)
-				{
-					CurrentSBControl = new EmptyViewModel();
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Drive Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-					break;
-				}
-				catch (IOException ex)
-				{
-					CurrentSBControl = new EmptyViewModel();
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-					break;
-				}
 				catch (Exception ex)
 				{
 					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+					string title = ex switch
+					{
+						DirectoryNotFoundException => "Directory Not Found",
+						DriveNotFoundException => "Drive Not Found",
+						_ => "Error"
+					};
+					MessageBox.Show(ex.Message, title, MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				finally
