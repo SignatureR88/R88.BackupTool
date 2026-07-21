@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:local="clr-namespace:R88.BackupTool"
+        xmlns:views="clr-namespace:R88.BackupTool.Views"
         xmlns:vm="clr-namespace:R88.BackupTool.ViewModels"
         mc:Ignorable="d"
         Title="R88 BackupTool" Height="300" Width="400" FontSize="14"
@@ -19,6 +20,20 @@
                 <TextBlock Foreground="Red" FontSize="12" Text="{Binding AdornedElement.(Validation.Errors)[0].ErrorContent, ElementName=adornedelem}" />
             </StackPanel>
         </ControlTemplate>
+        <DataTemplate DataType="{x:Type vm:EmptyViewModel}">
+            <Grid />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CDTimerViewModel}">
+            <TextBlock Text="{Binding DataContext.CountDownTimer, RelativeSource={RelativeSource AncestorType={x:Type views:MainWindow}}}" />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BackupProgressViewModel}">
+            <Grid>
+                <ProgressBar Minimum="0" Maximum="100" Width="150"
+                             Value="{Binding DataContext.Progress, RelativeSource={RelativeSource AncestorType={x:Type views:MainWindow}}}" />
+                <TextBlock Text="{Binding DataContext.ProgressMsg, RelativeSource={RelativeSource AncestorType={x:Type views:MainWindow}}}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
     </Window.Resources>
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Closing">
@@ -35,8 +50,12 @@
                 </MenuItem>
             </Menu>
             <StatusBar DockPanel.Dock="Bottom">
-                <StatusBarItem>
+                <StatusBarItem HorizontalAlignment="Left">
                     <TextBlock Text="{Binding AppStatus}" />
+                </StatusBarItem>
+                <Separator Margin="5 0" />
+                <StatusBarItem HorizontalAlignment="Right">
+                    <ContentControl Content="{Binding CurrentSBControl}" />
                 </StatusBarItem>
             </StatusBar>
             <Grid>

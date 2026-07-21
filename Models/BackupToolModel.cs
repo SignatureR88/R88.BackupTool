@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 
 namespace R88.BackupTool.Models
@@ -69,6 +70,7 @@ namespace R88.BackupTool.Models
 						throw new DriveNotFoundException($@" ""{driveLetter}"" is not found.");
 					}
 				}
+
 				string backupDirectoryPath = Path.Combine(DestinationPath, $"{backupName}.zip");
 				string sourceFullPath = Path.GetFullPath(SourcePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				string destinationFullPath = Path.GetFullPath(DestinationPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -109,7 +111,6 @@ namespace R88.BackupTool.Models
 			{
 				throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
 			}
-
 
 			// ソースディレクトリ自体がジャンクション／シンボリックリンクの場合は拒否
 			if (dir.Attributes.HasFlag(FileAttributes.ReparsePoint))

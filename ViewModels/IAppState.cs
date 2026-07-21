@@ -6,7 +6,7 @@
 	interface IAppState
     {
         string StatusMessage { get; }
-        bool IsIntervalCmbEnabled { get => true; } 
+        bool IsIntervalCmbEnabled { get => true; }
 		bool CanExecuteSetPath() => true;
         bool CanExecuteBackup() => true;
         bool CanExecuteStop()=> true;

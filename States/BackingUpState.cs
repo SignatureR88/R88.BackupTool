@@ -20,6 +20,7 @@ namespace R88.BackupTool.States
 		public void ChangeState(MainWindowViewModel context)
 		{
 			context.CurrentState = new WaitingState();
+			context.CurrentSBControl = new CDTimerViewModel();
 		}
 	}
 	

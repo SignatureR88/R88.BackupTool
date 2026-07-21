@@ -21,10 +21,12 @@ namespace R88.BackupTool.States
 			if (context.IsSamePath() || !context.IsFilled() || context.IsUncPath())
 			{
 				context.CurrentState = new InitialState();
+				context.CurrentSBControl = new EmptyViewModel();
 			}
 			else
 			{
 				context.CurrentState = new BackingUpState();
+				context.CurrentSBControl = new BackupProgressViewModel();
 			}
 		}
 	}

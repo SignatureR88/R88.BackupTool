@@ -7,7 +7,7 @@ namespace R88.BackupTool.States
 	/// </summary>
 	internal class WaitingState : IAppState
 	{
-		public string StatusMessage => "待機中";
+		public string StatusMessage => "次のバックアップまで";
 		public bool IsIntervalCmbEnabled => false;
 		public bool CanExecuteSetPath() => false;
 		public bool CanExecuteBackup() => false;
@@ -19,6 +19,7 @@ namespace R88.BackupTool.States
 		public void ChangeState(MainWindowViewModel context)
 		{
 			context.CurrentState = new BackingUpState();
+			context.CurrentSBControl = new BackupProgressViewModel();
 		}
 	}
 }

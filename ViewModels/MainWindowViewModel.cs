@@ -47,6 +47,12 @@ namespace R88.BackupTool.ViewModels
 		[NotifyCanExecuteChangedFor(nameof(LoadPreviouseCommand))]
 		[NotifyCanExecuteChangedFor(nameof(ExitCommand))]
 		private IAppState _currentState;
+
+		[ObservableProperty]
+		private string _countDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
+
+		[ObservableProperty]
+		private ObservableObject? _currentSBControl;
 		#endregion
 
 		private readonly BackupToolModel _model;
@@ -68,6 +74,7 @@ namespace R88.BackupTool.ViewModels
 			_selectedIndex = 1;
 			SelectedInterval = IntervalCmbSource[_selectedIndex];
 			_interval = SelectedInterval.Value;
+			_currentSBControl = new EmptyViewModel();
 
 			// アプリケーションデータの保存先を決定する
 			string _roming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -188,16 +195,24 @@ namespace R88.BackupTool.ViewModels
 				{
 					CurrentState.ChangeState(this);
 					await Task.Run(() => _model.Backup());
+					// バックアップが完了したらカウントダウンタイマーを開始する
+					int timeleft = (int)_interval.TotalSeconds;
 					CurrentState.ChangeState(this);
-					await Task.Delay(_interval, _cts.Token);
+					while (timeleft >= 0) { 	
+						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
+						await Task.Delay(1000, _cts.Token);
+						timeleft--;	
+					}
 				}
 				catch (TaskCanceledException)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
 					break;
 				}
 				catch (DirectoryNotFoundException ex)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
 					MessageBox.Show(ex.Message, "Directory Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
@@ -205,18 +220,21 @@ namespace R88.BackupTool.ViewModels
 
 				catch (DriveNotFoundException ex)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
 					MessageBox.Show(ex.Message, "Drive Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				catch (IOException ex)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
 					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				catch (Exception ex)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
 					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
