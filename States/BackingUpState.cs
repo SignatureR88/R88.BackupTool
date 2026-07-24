@@ -9,7 +9,6 @@ namespace R88.BackupTool.States
 	{
 		public string StatusMessage => "バックアップ中...";
 		public bool IsIntervalCmbEnabled => false;
-		public bool IsCDTimerVisible => false; 
 		public bool CanExecuteSetPath() => false;
 		public bool CanExecuteBackup() => false;
 		public bool CanExecuteStop() => false;
@@ -21,6 +20,7 @@ namespace R88.BackupTool.States
 		public void ChangeState(MainWindowViewModel context)
 		{
 			context.CurrentState = new WaitingState();
+			context.CurrentSBControl = new CDTimerViewModel();
 		}
 	}
 	

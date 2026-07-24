@@ -9,7 +9,6 @@ namespace R88.BackupTool.States
 	{
 		public string StatusMessage => "フォルダが未指定です。";
 		public bool IsIntervalCmbEnabled => true;
-		public bool IsCDTimerVisible => false;
 		public bool CanExecuteSetPath() => true;
 		public bool CanExecuteBackup() => false;
 		public bool CanExecuteStop() => false;
@@ -22,6 +21,7 @@ namespace R88.BackupTool.States
 			if (context.IsFilled() && !context.IsSamePath() && !context.IsUncPath())
 			{
 				context.CurrentState = new ReadyState();
+				context.CurrentSBControl = new EmptyViewModel();
 			}
 		}
 	}

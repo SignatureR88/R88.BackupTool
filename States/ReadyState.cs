@@ -9,7 +9,6 @@ namespace R88.BackupTool.States
 	{
 		public string StatusMessage => "準備完了";
 		public bool IsIntervalCmbEnabled => true;
-		public bool IsCDTimerVisible => false;
 		public bool CanExecuteSetPath() => true;
 		public bool CanExecuteBackup() => true;
 		public bool CanExecuteStop() => false;
@@ -22,10 +21,12 @@ namespace R88.BackupTool.States
 			if (context.IsSamePath() || !context.IsFilled() || context.IsUncPath())
 			{
 				context.CurrentState = new InitialState();
+				context.CurrentSBControl = new EmptyViewModel();
 			}
 			else
 			{
 				context.CurrentState = new BackingUpState();
+				context.CurrentSBControl = new BackupProgressViewModel();
 			}
 		}
 	}

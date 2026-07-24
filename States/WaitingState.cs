@@ -9,7 +9,6 @@ namespace R88.BackupTool.States
 	{
 		public string StatusMessage => "次のバックアップまで";
 		public bool IsIntervalCmbEnabled => false;
-		public bool IsCDTimerVisible => true;
 		public bool CanExecuteSetPath() => false;
 		public bool CanExecuteBackup() => false;
 		public bool CanExecuteStop() => true;
@@ -20,6 +19,7 @@ namespace R88.BackupTool.States
 		public void ChangeState(MainWindowViewModel context)
 		{
 			context.CurrentState = new BackingUpState();
+			context.CurrentSBControl = new BackupProgressViewModel();
 		}
 	}
 }

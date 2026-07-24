@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 
 namespace R88.BackupTool.Models
@@ -38,15 +39,17 @@ namespace R88.BackupTool.Models
 				return string.Empty;
 			}
 		}
+
 		/// <summary>
 		/// バックアップを実行するメソッド
 		/// ロック中のファイル対策で一時フォルダに待避後圧縮します
 		/// </summary>
+		/// <param name="progress">進捗状況を報告するIProgressインターフェース</param>
+		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
 		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
 		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
-		public void Backup()
+		public void Backup(IProgress<int> progress, IProgress<string> progressMessage)
 		{
-			string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 			string timeStamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 			string? root = Path.GetPathRoot(DestinationPath);
 			DriveInfo drive;
@@ -58,7 +61,7 @@ namespace R88.BackupTool.Models
 					throw new DirectoryNotFoundException($@" ""{SourcePath}"" is not found.");
 				}
 				string sourceDirectoryName = Path.GetFileName(SourcePath);
-				string backupName = $"{sourceDirectoryName}_{timeStamp}";
+				string zipName = $"{sourceDirectoryName}_{timeStamp}.zip";
 				if (root != null)
 				{
 					drive = new DriveInfo(root);
@@ -69,7 +72,8 @@ namespace R88.BackupTool.Models
 						throw new DriveNotFoundException($@" ""{driveLetter}"" is not found.");
 					}
 				}
-				string backupDirectoryPath = Path.Combine(DestinationPath, $"{backupName}.zip");
+
+				string zipPath = Path.Combine(DestinationPath, $"{zipName}");
 				string sourceFullPath = Path.GetFullPath(SourcePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				string destinationFullPath = Path.GetFullPath(DestinationPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 				if(destinationFullPath.StartsWith(sourceFullPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
@@ -82,66 +86,102 @@ namespace R88.BackupTool.Models
 					Directory.CreateDirectory(DestinationPath);
 				}
 
-				string path = Path.Combine(tempDir, sourceDirectoryName);
-				CopyDirectory(SourcePath, path);
-				ZipFile.CreateFromDirectory(path, backupDirectoryPath, CompressionLevel.Optimal, includeBaseDirectory: false);
+				CompressedWorkflow(sourceFullPath, zipPath, progress, progressMessage);
 
 			}
 			finally
 			{
-				if (Directory.Exists(tempDir))
-				{
-					Directory.Delete(tempDir, true);
-				}
+
 			}
 		}
 
-		/// <summary>
-		/// フォルダコピーメソッド
-		/// </summary>
-		/// <param name="sourceDir">コピー元</param>
-		/// <param name="destinationDir">コピー先</param>
-		/// <exception cref="DirectoryNotFoundException">コピー元が存在しない例外</exception>
-		/// <exception cref="IOException">コピー元がジャンクション／シンボリックリンクの場合にスローされる例外</exception>
-		private static void CopyDirectory(string sourceDir, string destinationDir)
+
+		private static void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
 		{
-			var dir = new DirectoryInfo(sourceDir);
-			if (!dir.Exists)
+			// ファイル一覧と総バイト数
+			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
+			long totalBytes = files.Sum(f => new FileInfo(f).Length);
+			if(totalBytes == 0)
 			{
-				throw new DirectoryNotFoundException($"Source directory not found: {dir.FullName}");
+				progress.Report(100);
+				using(ZipFile.Open(destZip, ZipArchiveMode.Create)) { }
+				return;
 			}
 
-			// ソースディレクトリ自体がジャンクション／シンボリックリンクの場合は拒否
-			if (dir.Attributes.HasFlag(FileAttributes.ReparsePoint))
-			{
-				throw new IOException($"Source directory is a junction or symbolic link and is not supported: {dir.FullName}");
-			}
-			DirectoryInfo[] dirs = dir.GetDirectories();
-			
-			Directory.CreateDirectory(destinationDir);
-			
-			foreach (FileInfo file in dir.GetFiles())
-			{
-				// ジャンクション／シンボリックリンクはスキップ
-				if (file.Attributes.HasFlag(FileAttributes.ReparsePoint))
-				{
-					continue;
-				}
-				string targetFilePath = Path.Combine(destinationDir, file.Name);
-				file.CopyTo(targetFilePath);
-			}
+			//一時フォルダの作成
+			var tempRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(tempRoot);
 
-			foreach (DirectoryInfo subDir in dirs)
+			long copiedBytes = 0;
+			long compressedBytes = 0;
+
+			var copyProgress = new Progress<long>(b =>
 			{
-				// ジャンクション／シンボリックリンクはスキップ
-				if(subDir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+				copiedBytes += b;
+				int percent = (int)((copiedBytes + compressedBytes) * 100 / (2 * totalBytes));
+				progress.Report(Math.Min(100, percent));
+			});
+
+			var compressProgress = new Progress<long>(b =>
+			{
+				compressedBytes += b;
+				int percent = (int)((copiedBytes + compressedBytes) * 100 / (2 * totalBytes));
+				progress.Report(Math.Min(100, percent));
+			});
+
+			try
+			{
+				// コピーフェーズ
+				progressMessage.Report("コピー中");
+				foreach(var f in files)
 				{
-					continue;
+					var rel = Path.GetRelativePath(srcDir, f);
+					var destPath = Path.Combine(tempRoot, rel);
+					Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+					CopyFileWithProgress(f, destPath, copyProgress);
 				}
-				string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-				CopyDirectory(subDir.FullName, newDestinationDir);
+
+				//圧縮フェーズ
+				progressMessage.Report("圧縮中");
+				var tempFiles = Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories);
+				using var zipFs = new FileStream(destZip, FileMode.Create, FileAccess.Write, FileShare.None);
+				using var archive = new ZipArchive(zipFs, ZipArchiveMode.Create);
+				foreach(var f in tempFiles)
+				{
+					var rel = Path.GetRelativePath(tempRoot, f);
+					var entry = archive.CreateEntry(rel, CompressionLevel.Optimal);
+					using var entryStream = entry.Open();
+					using var fs = File.OpenRead(f);
+					CopyStreamWithProgress(fs, entryStream, compressProgress);
+				}
 			}
-			
+			catch
+			{
+				try { File.Delete(destZip); } catch { }
+				throw;
+			}
+			finally
+			{
+				try { Directory.Delete(tempRoot, true); } catch { }
+			}
+		}
+
+		private static void CopyFileWithProgress(string src, string dest, IProgress<long> progress)
+		{
+			using var inFs = File.OpenRead(src);
+			using var outFs = File.Create(dest);
+			CopyStreamWithProgress(inFs, outFs, progress);
+		}
+
+		private static void CopyStreamWithProgress(Stream input, Stream output, IProgress<long> progress)
+		{
+			byte[] buff = new byte[65536];
+			int read;
+			while((read = input.Read(buff, 0, buff.Length)) > 0)
+			{
+				output.Write(buff, 0, read);
+				progress.Report(read);
+			}
 		}
 	}
 }

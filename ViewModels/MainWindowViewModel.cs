@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
 
 
 namespace R88.BackupTool.ViewModels
@@ -39,7 +40,6 @@ namespace R88.BackupTool.ViewModels
 		[ObservableProperty]
 		[NotifyPropertyChangedFor(nameof(AppStatus))]
 		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnabled))]
-		[NotifyPropertyChangedFor(nameof(IsCDTimerVisible))]
 		[NotifyCanExecuteChangedFor(nameof(SetSourcePathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(SetDestinationPathCommand))]
 		[NotifyCanExecuteChangedFor(nameof(BackupRunCommand))]
@@ -51,6 +51,15 @@ namespace R88.BackupTool.ViewModels
 
 		[ObservableProperty]
 		private string _countDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
+
+		[ObservableProperty]
+		private ObservableObject? _currentSBControl;
+
+		[ObservableProperty]
+		private int _progressValue;
+
+		[ObservableProperty]
+		private string _progressMsg = string.Empty;
 		#endregion
 
 		private readonly BackupToolModel _model;
@@ -72,6 +81,7 @@ namespace R88.BackupTool.ViewModels
 			_selectedIndex = 1;
 			SelectedInterval = IntervalCmbSource[_selectedIndex];
 			_interval = SelectedInterval.Value;
+			_currentSBControl = new EmptyViewModel();
 
 			// アプリケーションデータの保存先を決定する
 			string _roming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -191,44 +201,38 @@ namespace R88.BackupTool.ViewModels
 				try
 				{
 					CurrentState.ChangeState(this);
-					await Task.Run(() => _model.Backup());
+					ProgressMsg = "準備中";
+					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), new Progress<string>(m => ProgressMsg = m)));
+					ProgressMsg = "完了";
+					ProgressValue = 100;
+					// バックアップが完了したらカウントダウンタイマーを開始する
 					int timeleft = (int)_interval.TotalSeconds;
 					CurrentState.ChangeState(this);
-					while (timeleft > 0) { 	
+					while (timeleft >= 0) { 	
 						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
 						await Task.Delay(1000, _cts.Token);
 						timeleft--;	
 					}
-					CountDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
 				}
+
 				catch (TaskCanceledException)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
-					break;
-				}
-				catch (DirectoryNotFoundException ex)
-				{
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Directory Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 
-				catch (DriveNotFoundException ex)
-				{
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Drive Not Found", MessageBoxButton.OK, MessageBoxImage.Error);
-					break;
-				}
-				catch (IOException ex)
-				{
-					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-					break;
-				}
 				catch (Exception ex)
 				{
+					CurrentSBControl = new EmptyViewModel();
 					CurrentState = new ReadyState();
-					MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+					string title = ex switch
+					{
+						DirectoryNotFoundException => "Directory Not Found",
+						DriveNotFoundException => "Drive Not Found",
+						_ => "Error"
+					};
+					MessageBox.Show(ex.Message, title, MessageBoxButton.OK, MessageBoxImage.Error);
 					break;
 				}
 				finally
@@ -329,7 +333,6 @@ namespace R88.BackupTool.ViewModels
 		#region CanExecutes
 		public string AppStatus => CurrentState.StatusMessage;
 		public bool IsIntervalCmbEnabled => CurrentState.IsIntervalCmbEnabled;
-		public bool IsCDTimerVisible => CurrentState.IsCDTimerVisible;
 		private bool CanExecuteSetPath() => CurrentState.CanExecuteSetPath();
 		private bool CanExecuteBackup() => CurrentState.CanExecuteBackup();
 		private bool CanExecuteStop() => CurrentState.CanExecuteStop();
