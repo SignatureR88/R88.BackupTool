@@ -53,6 +53,12 @@ namespace R88.BackupTool.ViewModels
 
 		[ObservableProperty]
 		private ObservableObject? _currentSBControl;
+
+		[ObservableProperty]
+		private int _progressValue;
+
+		[ObservableProperty]
+		private string _progressMsg = string.Empty;
 		#endregion
 
 		private readonly BackupToolModel _model;
@@ -194,7 +200,10 @@ namespace R88.BackupTool.ViewModels
 				try
 				{
 					CurrentState.ChangeState(this);
-					await Task.Run(() => _model.Backup());
+					ProgressMsg = "準備中";
+					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), ProgressMsg));
+					ProgressMsg = "完了";
+					ProgressValue = 100;
 					// バックアップが完了したらカウントダウンタイマーを開始する
 					int timeleft = (int)_interval.TotalSeconds;
 					CurrentState.ChangeState(this);
