@@ -45,9 +45,10 @@ namespace R88.BackupTool.Models
 		/// ロック中のファイル対策で一時フォルダに待避後圧縮します
 		/// </summary>
 		/// <param name="progress">進捗状況を報告するIProgressインターフェース</param>
+		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
 		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
 		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
-		public void Backup(IProgress<int> progress, string progMsg)
+		public void Backup(IProgress<int> progress, IProgress<string> progressMessage)
 		{
 			string timeStamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 			string? root = Path.GetPathRoot(DestinationPath);
@@ -85,7 +86,7 @@ namespace R88.BackupTool.Models
 					Directory.CreateDirectory(DestinationPath);
 				}
 
-				CompressedWorkflow(sourceFullPath, zipPath, progress, progMsg);
+				CompressedWorkflow(sourceFullPath, zipPath, progress, progressMessage);
 
 			}
 			finally
@@ -95,7 +96,7 @@ namespace R88.BackupTool.Models
 		}
 
 
-		private static void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, string progMsg)
+		private static void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
 		{
 			// ファイル一覧と総バイト数
 			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
@@ -103,6 +104,7 @@ namespace R88.BackupTool.Models
 			if(totalBytes == 0)
 			{
 				progress.Report(100);
+				using(ZipFile.Open(destZip, ZipArchiveMode.Create)) { }
 				return;
 			}
 
@@ -130,7 +132,7 @@ namespace R88.BackupTool.Models
 			try
 			{
 				// コピーフェーズ
-				progMsg = "コピー中";
+				progressMessage.Report("コピー中");
 				foreach(var f in files)
 				{
 					var rel = Path.GetRelativePath(srcDir, f);
@@ -140,7 +142,7 @@ namespace R88.BackupTool.Models
 				}
 
 				//圧縮フェーズ
-				progMsg = "圧縮中";
+				progressMessage.Report("圧縮中");
 				var tempFiles = Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories);
 				using var zipFs = new FileStream(destZip, FileMode.Create, FileAccess.Write, FileShare.None);
 				using var archive = new ZipArchive(zipFs, ZipArchiveMode.Create);
@@ -152,6 +154,11 @@ namespace R88.BackupTool.Models
 					using var fs = File.OpenRead(f);
 					CopyStreamWithProgress(fs, entryStream, compressProgress);
 				}
+			}
+			catch
+			{
+				try { File.Delete(destZip); } catch { }
+				throw;
 			}
 			finally
 			{

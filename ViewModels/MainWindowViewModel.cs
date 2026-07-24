@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
 
 
 namespace R88.BackupTool.ViewModels
@@ -201,7 +202,7 @@ namespace R88.BackupTool.ViewModels
 				{
 					CurrentState.ChangeState(this);
 					ProgressMsg = "準備中";
-					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), ProgressMsg));
+					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), new Progress<string>(m => ProgressMsg = m)));
 					ProgressMsg = "完了";
 					ProgressValue = 100;
 					// バックアップが完了したらカウントダウンタイマーを開始する
