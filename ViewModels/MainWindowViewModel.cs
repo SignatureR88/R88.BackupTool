@@ -195,24 +195,31 @@ namespace R88.BackupTool.ViewModels
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
 		public async Task BackupRun() 
 		{
+			CurrentState = new BackingUpState();
+			CurrentSBControl = new BackupProgressViewModel();
+
 			do
 			{
 				_cts = new CancellationTokenSource();
 				try
 				{
-					CurrentState.ChangeState(this);
 					ProgressMsg = "準備中";
 					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), new Progress<string>(m => ProgressMsg = m)));
 					ProgressMsg = "完了";
 					ProgressValue = 100;
+
+					// WaitStateへ遷移
+					CurrentState.ChangeState(this);
+					
 					// バックアップが完了したらカウントダウンタイマーを開始する
 					int timeleft = (int)_interval.TotalSeconds;
-					CurrentState.ChangeState(this);
 					while (timeleft >= 0) { 	
 						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
 						await Task.Delay(1000, _cts.Token);
 						timeleft--;	
 					}
+					// BackingUpStateへ遷移
+					CurrentState.ChangeState(this);
 				}
 
 				catch (TaskCanceledException)

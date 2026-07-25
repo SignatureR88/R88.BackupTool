@@ -23,11 +23,6 @@ namespace R88.BackupTool.States
 				context.CurrentState = new InitialState();
 				context.CurrentSBControl = new EmptyViewModel();
 			}
-			else
-			{
-				context.CurrentState = new BackingUpState();
-				context.CurrentSBControl = new BackupProgressViewModel();
-			}
 		}
 	}
 }

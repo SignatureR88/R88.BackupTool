@@ -168,7 +168,8 @@ namespace R88.BackupTool.Models
 
 		private static void CopyFileWithProgress(string src, string dest, IProgress<long> progress)
 		{
-			using var inFs = File.OpenRead(src);
+			using var inFs = new FileStream(src, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+			//using var inFs = File.OpenRead(src);
 			using var outFs = File.Create(dest);
 			CopyStreamWithProgress(inFs, outFs, progress);
 		}
