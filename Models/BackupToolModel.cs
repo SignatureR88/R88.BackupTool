@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.IO;
+﻿using System.IO;
 using System.IO.Compression;
 
 namespace R88.BackupTool.Models
@@ -15,6 +14,11 @@ namespace R88.BackupTool.Models
 		/// バックアップ先のパス
 		/// </summary>
 		public string DestinationPath { get; set; } = string.Empty;
+
+		/// <summary>
+		/// 除外対象リスト
+		/// </summary>
+		public List<string> ExcludeList = [];
 
 		/// <summary>
 		/// OpenFolderDialogを使用してフォルダパスを取得するメソッド

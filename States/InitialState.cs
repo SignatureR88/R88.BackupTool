@@ -15,6 +15,10 @@ namespace R88.BackupTool.States
 		public bool CanExecuteSaveAppDatas() => true;
 		public bool CanExecuteLoadPrevious() => true;
 		public bool CanExecuteExit() => true;
+		public bool CanExecuteAddItem() => true;
+		public bool CanExecuteEditItem() => true;
+		public bool CanExecuteRemoveItem() => true;
+
 
 		public void ChangeState(MainWindowViewModel context)
 		{
