@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.ObjectModel;
+using System.IO;
 using System.IO.Compression;
 
 namespace R88.BackupTool.Models
@@ -18,7 +19,12 @@ namespace R88.BackupTool.Models
 		/// <summary>
 		/// 除外対象リスト
 		/// </summary>
-		public List<string> ExcludeList = [];
+		public ObservableCollection<ExcludeListItem> ExcludeList;
+
+		public BackupToolModel() 
+		{
+			ExcludeList = [];
+		}
 
 		/// <summary>
 		/// OpenFolderDialogを使用してフォルダパスを取得するメソッド
@@ -100,7 +106,7 @@ namespace R88.BackupTool.Models
 		}
 
 
-		private static void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
+		private void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
 		{
 			// ファイル一覧と総バイト数
 			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
@@ -139,6 +145,11 @@ namespace R88.BackupTool.Models
 				progressMessage.Report("コピー中");
 				foreach(var f in files)
 				{
+					//除外対象はスキップ
+					if(IsSame(f))
+					{
+						continue;
+					}
 					var rel = Path.GetRelativePath(srcDir, f);
 					var destPath = Path.Combine(tempRoot, rel);
 					Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
@@ -173,7 +184,6 @@ namespace R88.BackupTool.Models
 		private static void CopyFileWithProgress(string src, string dest, IProgress<long> progress)
 		{
 			using var inFs = new FileStream(src, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-			//using var inFs = File.OpenRead(src);
 			using var outFs = File.Create(dest);
 			CopyStreamWithProgress(inFs, outFs, progress);
 		}
@@ -187,6 +197,18 @@ namespace R88.BackupTool.Models
 				output.Write(buff, 0, read);
 				progress.Report(read);
 			}
+		}
+
+		private bool IsSame(string target)
+		{
+			foreach(var item in ExcludeList)
+			{
+				if(target.Equals(item.FilePath, StringComparison.OrdinalIgnoreCase))
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 }

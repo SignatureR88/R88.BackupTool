@@ -182,6 +182,11 @@ namespace R88.BackupTool.ViewModels
 			CurrentState.ChangeState(this);
 		}
 
+		partial void OnExcludeListChanged(ObservableCollection<ExcludeListItem> value)
+		{
+			_model.ExcludeList = value;
+		}
+
 		partial void OnSelectedIntervalChanged(IntervalCmbItems value)
 		{
 			_interval = SelectedInterval.Value;
@@ -235,11 +240,11 @@ namespace R88.BackupTool.ViewModels
 		/// 除外リストに重複がないかを調べるメソッド
 		/// </summary>
 		/// <param name="filePath">比較対象</param>
-		/// <param name="exList">除外リスト</param>
+		/// <param name="excludeList">除外リスト</param>
 		/// <returns>重複あり：true。重複なし：false</returns>
-		private static bool IsSamePath(string filePath, ObservableCollection<ExcludeListItem> exList)
+		private static bool IsSamePath(string filePath, ObservableCollection<ExcludeListItem> excludeList)
 		{
-			foreach (var f in exList)
+			foreach (var f in excludeList)
 			{
 				if (filePath.Equals(f.FilePath, StringComparison.OrdinalIgnoreCase))
 				{
@@ -248,7 +253,6 @@ namespace R88.BackupTool.ViewModels
 			}
 			return false;
 		}
-
 
 		#region Commands
 		/// <summary>
@@ -305,7 +309,6 @@ namespace R88.BackupTool.ViewModels
 		{
 			ExcludeList.RemoveAt(ExcludeListSelectedIndex);
 		}
-
 
 		/// <summary>
 		/// バックアップを実行するコマンド
