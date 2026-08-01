@@ -110,7 +110,8 @@ namespace R88.BackupTool.Models
 		{
 			// ファイル一覧と総バイト数
 			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
-			long totalBytes = files.Sum(f => new FileInfo(f).Length);
+			var filteredFiles = ExclusionFilter(files);
+			long totalBytes = filteredFiles.Sum(f => new FileInfo(f).Length);
 			if(totalBytes == 0)
 			{
 				progress.Report(100);
@@ -143,13 +144,8 @@ namespace R88.BackupTool.Models
 			{
 				// コピーフェーズ
 				progressMessage.Report("コピー中");
-				foreach(var f in files)
+				foreach(var f in filteredFiles)
 				{
-					//除外対象はスキップ
-					if(IsSame(f))
-					{
-						continue;
-					}
 					var rel = Path.GetRelativePath(srcDir, f);
 					var destPath = Path.Combine(tempRoot, rel);
 					Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
@@ -199,7 +195,12 @@ namespace R88.BackupTool.Models
 			}
 		}
 
-		private bool IsSame(string target)
+		/// <summary>
+		/// 除外リストに該当するか判定するメソッド
+		/// </summary>
+		/// <param name="target">比較対象</param>
+		/// <returns>該当する場合true、該当しない場合false</returns>
+		private bool IsSameExclusion(string target)
 		{
 			foreach(var item in ExcludeList)
 			{
@@ -209,6 +210,27 @@ namespace R88.BackupTool.Models
 				}
 			}
 			return false;
+		}
+
+		/// <summary>
+		/// 除外リストのファイルを削除するメソッド
+		/// </summary>
+		/// <param name="files">ファイル一覧</param>
+		/// <returns>削除後のファイル一覧</returns>
+		private string[] ExclusionFilter(string[] files)
+		{
+			// 配列からリストへ変換
+			List<string> list = [.. files];
+
+			foreach(var e in list)
+			{
+				if(IsSameExclusion(e))
+				{
+					list.Remove(e);
+				}
+			}
+
+			return [.. list];
 		}
 	}
 }
