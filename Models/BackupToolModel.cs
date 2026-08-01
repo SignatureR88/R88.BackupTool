@@ -222,13 +222,7 @@ namespace R88.BackupTool.Models
 			// 配列からリストへ変換
 			List<string> list = [.. files];
 
-			foreach(var e in list)
-			{
-				if(IsSameExclusion(e))
-				{
-					list.Remove(e);
-				}
-			}
+			list.RemoveAll(IsSameExclusion);
 
 			return [.. list];
 		}
