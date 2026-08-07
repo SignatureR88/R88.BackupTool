@@ -95,6 +95,12 @@ namespace R88.BackupTool.ViewModels
 		/// </summary>
 		[ObservableProperty]
 		public partial string ProgressMsg { get; set; } = string.Empty;
+
+		/// <summary>
+		/// バックアップ準備中かどうか
+		/// </summary>
+		[ObservableProperty]
+		public partial bool ProgressIsBusy { get; set; } = false;
 		#endregion
 
 		private readonly BackupToolModel _model;
@@ -325,8 +331,14 @@ namespace R88.BackupTool.ViewModels
 				_cts = new CancellationTokenSource();
 				try
 				{
+					ProgressIsBusy = true;
 					ProgressMsg = "準備中";
-					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), new Progress<string>(m => ProgressMsg = m)));
+					await Task.Run(() => _model.Backup(
+						new Progress<int>(p => ProgressValue = p),
+						new Progress<string>(m => ProgressMsg = m),
+						new Progress<bool>(b => ProgressIsBusy = b))
+					);
+
 					ProgressMsg = "完了";
 					ProgressValue = 100;
 

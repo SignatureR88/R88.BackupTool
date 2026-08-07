@@ -29,7 +29,8 @@
         <DataTemplate DataType="{x:Type vm:BackupProgressViewModel}">
             <Grid>
                 <ProgressBar Minimum="0" Maximum="100" Width="150"
-                             Value="{Binding DataContext.ProgressValue, RelativeSource={RelativeSource AncestorType={x:Type v:MainWindow}}}" />
+                             Value="{Binding DataContext.ProgressValue, RelativeSource={RelativeSource AncestorType={x:Type v:MainWindow}}}" 
+                             IsIndeterminate="{Binding DataContext.ProgressIsBusy, RelativeSource={RelativeSource AncestorType={x:Type v:MainWindow}}}"/>
                 <TextBlock Text="{Binding DataContext.ProgressMsg, RelativeSource={RelativeSource AncestorType={x:Type v:MainWindow}}}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>

@@ -1,6 +1,13 @@
-﻿using System.Collections.ObjectModel;
+﻿using Alphaleonis.Win32.Vss;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
+
+// System.IOの代わりにAlphaFSのnamespaceを使用
+using File = Alphaleonis.Win32.Filesystem.File;
+using Directory = Alphaleonis.Win32.Filesystem.Directory;
+using Path = Alphaleonis.Win32.Filesystem.Path;
+using System.Linq.Expressions;
 
 namespace R88.BackupTool.Models
 {
@@ -58,7 +65,7 @@ namespace R88.BackupTool.Models
 		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
 		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
 		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
-		public void Backup(IProgress<int> progress, IProgress<string> progressMessage)
+		public void Backup(IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
 		{
 			string timeStamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 			string? root = Path.GetPathRoot(DestinationPath);
@@ -96,7 +103,7 @@ namespace R88.BackupTool.Models
 					Directory.CreateDirectory(DestinationPath);
 				}
 
-				CompressedWorkflow(sourceFullPath, zipPath, progress, progressMessage);
+				CreateSnapshot(sourceFullPath, zipPath, progress , progressMessage, isBusy);
 
 			}
 			finally
@@ -105,6 +112,49 @@ namespace R88.BackupTool.Models
 			}
 		}
 
+		private void CreateSnapshot(string src, string zipPath, IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
+		{
+			// 対象のドライブ文字を取得
+			string volumeName = Path.GetPathRoot(src);
+			try
+			{
+				progressMessage.Report("VSS 初期化中...");
+				IVssFactory vssImplementation = VssFactoryProvider.Default.GetVssFactory();
+				using IVssBackupComponents backup = vssImplementation.CreateVssBackupComponents();
+				// バックアップの初期化設定
+				backup.InitializeForBackup(null);
+				backup.GatherWriterMetadata();
+				backup.StartSnapshotSet();
+
+				// ボリュームをスナップショットセットに追加
+				Guid snapshotId = backup.AddToSnapshotSet(volumeName, Guid.Empty);
+
+				progressMessage.Report("スナップショット作成中...");
+				backup.PrepareForBackup();
+				backup.DoSnapshotSet();
+
+				VssSnapshotProperties props = backup.GetSnapshotProperties(snapshotId);
+				string snapshotDevObj = props.SnapshotDeviceObject;
+
+				string relativePath = src[volumeName.Length..];
+				string snapshotFolderPath = Path.Combine(snapshotDevObj, relativePath);
+
+				if (!snapshotFolderPath.EndsWith('\\'))
+				{
+					snapshotFolderPath += "\\";
+				}
+
+				isBusy.Report(false);
+				CompressedWorkflow(snapshotFolderPath, zipPath, progress, progressMessage);
+
+				// 後処理
+				backup.BackupComplete();
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+		}
 
 		private void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
 		{
@@ -112,7 +162,7 @@ namespace R88.BackupTool.Models
 			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
 			var filteredFiles = ExclusionFilter(files);
 			long totalBytes = filteredFiles.Sum(f => new FileInfo(f).Length);
-			if(totalBytes == 0)
+			if(filteredFiles.Length == 0)
 			{
 				progress.Report(100);
 				using(ZipFile.Open(destZip, ZipArchiveMode.Create)) { }
