@@ -116,6 +116,7 @@ namespace R88.BackupTool.Models
 		{
 			// 対象のドライブ文字を取得
 			string volumeName = Path.GetPathRoot(src);
+			if(!volumeName.EndsWith('\\')) volumeName += "\\";
 			try
 			{
 				progressMessage.Report("VSS 初期化中...");
@@ -154,13 +155,14 @@ namespace R88.BackupTool.Models
 			{
 				throw;
 			}
+			
 		}
 
 		private void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
 		{
 			// ファイル一覧と総バイト数
 			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
-			var filteredFiles = ExclusionFilter(files);
+			var filteredFiles = ExclusionFilter(files, srcDir);
 			long totalBytes = filteredFiles.Sum(f => new FileInfo(f).Length);
 			if(filteredFiles.Length == 0)
 			{
@@ -246,33 +248,62 @@ namespace R88.BackupTool.Models
 		}
 
 		/// <summary>
-		/// 除外リストに該当するか判定するメソッド
+		/// 除外リストのファイルを削除するメソッド
+		/// スナップショットのルート(srcDir)からの相対パスを元の SourcePath に結合して
+		/// 除外リストとの比較を行います。
 		/// </summary>
-		/// <param name="target">比較対象</param>
-		/// <returns>該当する場合true、該当しない場合false</returns>
-		private bool IsSameExclusion(string target)
+		/// <param name="files">ファイル一覧(スナップショット上のパス)</param>
+		/// <param name="srcDir">スナップショット上のルートパス</param>
+		/// <returns>削除後のファイル一覧</returns>
+		private string[] ExclusionFilter(string[] files, string srcDir)
 		{
-			foreach(var item in ExcludeList)
+			if (files == null || files.Length == 0) return [];
+			if (ExcludeList == null || ExcludeList.Count == 0) return files;
+
+			var list = new List<string>(files);
+
+			// 後ろから走査して安全に削除
+			for (int i = list.Count - 1; i >= 0; i--)
 			{
-				if(target.Equals(item.FilePath, StringComparison.OrdinalIgnoreCase))
+				string file = list[i];
+				string relPath;
+				try
 				{
-					return true;
+					relPath = Path.GetRelativePath(srcDir, file);
+				}
+				catch
+				{
+					// 相対化できない場合は除外しない
+					continue;
+				}
+
+				// スナップショット上の相対パスを元の SourcePath に結合して比較する
+				string originalPath;
+				try
+				{
+					originalPath = Path.GetFullPath(Path.Combine(SourcePath, relPath))
+						.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				}
+				catch
+				{
+					continue;
+				}
+
+				bool excluded = false;
+				foreach (var ex in ExcludeList)
+				{
+					if (string.Equals(originalPath, ex.FilePath, StringComparison.OrdinalIgnoreCase))
+					{
+						excluded = true;
+						break;
+					}
+				}
+
+				if (excluded)
+				{
+					list.RemoveAt(i);
 				}
 			}
-			return false;
-		}
-
-		/// <summary>
-		/// 除外リストのファイルを削除するメソッド
-		/// </summary>
-		/// <param name="files">ファイル一覧</param>
-		/// <returns>削除後のファイル一覧</returns>
-		private string[] ExclusionFilter(string[] files)
-		{
-			// 配列からリストへ変換
-			List<string> list = [.. files];
-
-			list.RemoveAll(IsSameExclusion);
 
 			return [.. list];
 		}

@@ -13,5 +13,7 @@ namespace R88.BackupTool.Models
 		public string DestinationPath { get; set; } = string.Empty;
 		[JsonPropertyName("selectedIndex")]
 		public int SelectedIndex { get; set; }
+		[JsonPropertyName("exclusionList")]
+		public List<ExcludeListItem> ExcludeList { get; set; } = [];
 	}
 }

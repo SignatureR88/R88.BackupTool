@@ -3,8 +3,10 @@ using CommunityToolkit.Mvvm.Input;
 using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security.Principal;
 using System.Text.Json;
 using System.Windows;
 
@@ -323,6 +325,30 @@ namespace R88.BackupTool.ViewModels
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
 		public async Task BackupRun() 
 		{
+			// 管理者権限かチェック
+			var identity = WindowsIdentity.GetCurrent();
+			var principal = new WindowsPrincipal(identity);
+
+			if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
+			{
+				//　管理者権限で再起動
+				var psi = new ProcessStartInfo
+				{
+					FileName = Process.GetCurrentProcess().MainModule?.FileName,
+					UseShellExecute = true,
+					Verb = "runas"
+				};
+
+				try
+				{
+					Process.Start(psi);
+				}
+				catch
+				{
+					return;
+
+				}
+			}
 			CurrentState = new BackingUpState();
 			CurrentSBControl = new BackupProgressViewModel();
 
@@ -404,7 +430,8 @@ namespace R88.BackupTool.ViewModels
 			{
 				DestinationPath = DestinationPath,
 				SourcePath = SourcePath,
-				SelectedIndex = _intervalCmbSelectedIndex
+				SelectedIndex = _intervalCmbSelectedIndex,
+				ExcludeList = [.. ExcludeList]
 			};
 
 			var json = JsonSerializer.Serialize(appData, _jsonOps);
@@ -450,6 +477,7 @@ namespace R88.BackupTool.ViewModels
 							_intervalCmbSelectedIndex = addData.SelectedIndex;
 							SelectedInterval = IntervalCmbSource[_intervalCmbSelectedIndex];
 						}
+						ExcludeList = [.. addData.ExcludeList];
 					}
 				}
 			}
