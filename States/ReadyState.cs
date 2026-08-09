@@ -15,6 +15,10 @@ namespace R88.BackupTool.States
 		public bool CanExecuteSaveAppDatas() => true;
 		public bool CanExecuteLoadPrevious() => true;
 		public bool CanExecuteExit() => true;
+		public bool CanExecuteAddItem() => true;
+	 	public bool CanExecuteEditItem() => true;
+		public bool CanExecuteRemoveItem() => true;
+
 
 		public void ChangeState(MainWindowViewModel context)
 		{
@@ -22,11 +26,6 @@ namespace R88.BackupTool.States
 			{
 				context.CurrentState = new InitialState();
 				context.CurrentSBControl = new EmptyViewModel();
-			}
-			else
-			{
-				context.CurrentState = new BackingUpState();
-				context.CurrentSBControl = new BackupProgressViewModel();
 			}
 		}
 	}

@@ -3,11 +3,12 @@ using CommunityToolkit.Mvvm.Input;
 using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security.Principal;
 using System.Text.Json;
 using System.Windows;
-using System.Windows.Interop;
 
 
 namespace R88.BackupTool.ViewModels
@@ -15,28 +16,49 @@ namespace R88.BackupTool.ViewModels
 	internal partial class MainWindowViewModel : ObservableValidator
 	{
 		#region Properties
+		/// <summary>
+		/// バックアップ元フォルダのパス
+		/// </summary>
 		[ObservableProperty]
-		private string _sourcePath = string.Empty;
+		public partial string SourcePath { get; set; } = string.Empty;
 
+		/// <summary>
+		/// バックアップ先フォルダのパス
+		/// </summary>
 		[ObservableProperty]
 		[NotifyDataErrorInfo]
 		[NotMatchProperty(nameof(SourcePath), ErrorMessage = "バックアップ元と同じパスは指定できません。")]
-		private string _destinationPath = string.Empty;
+		public partial string DestinationPath { get; set; } = string.Empty;
 
+		/// <summary>
+		/// バックアップ除外リスト
+		/// </summary>
 		[ObservableProperty]
-		private ObservableCollection<IntervalCmbItems> _intervalCmbSource = [		
-			new IntervalCmbItems("5分", TimeSpan.FromMinutes(5)),
-			new IntervalCmbItems("10分", TimeSpan.FromMinutes(10)),
-			new IntervalCmbItems("20分", TimeSpan.FromMinutes(20)),
-			new IntervalCmbItems("30分", TimeSpan.FromMinutes(30)),
-			new IntervalCmbItems("45分", TimeSpan.FromMinutes(45)),
-			new IntervalCmbItems("1時間", TimeSpan.FromHours(1)),
-			new IntervalCmbItems("2時間", TimeSpan.FromHours(2))
-		];
+		public partial ObservableCollection<ExcludeListItem> ExcludeList { get; set; }
 
+		/// <summary>
+		/// 除外リストの選択インデックス
+		/// </summary>
 		[ObservableProperty]
-		private IntervalCmbItems _selectedInterval;
+		[NotifyCanExecuteChangedFor(nameof(EditItemCommand))]
+		[NotifyCanExecuteChangedFor(nameof(RemoveItemCommand))]
+		public partial int ExcludeListSelectedIndex { get; set; }
 
+		/// <summary>
+		/// バックアップ間隔リスト
+		/// </summary>
+		[ObservableProperty]
+		public partial ObservableCollection<IntervalCmbItems> IntervalCmbSource { get; set; }
+
+		/// <summary>
+		/// 選択したバックアップ間隔
+		/// </summary>
+		[ObservableProperty]
+		public partial IntervalCmbItems SelectedInterval { get; set; }
+
+		/// <summary>
+		/// 現在のState
+		/// </summary>
 		[ObservableProperty]
 		[NotifyPropertyChangedFor(nameof(AppStatus))]
 		[NotifyPropertyChangedFor(nameof(IsIntervalCmbEnabled))]
@@ -47,41 +69,73 @@ namespace R88.BackupTool.ViewModels
 		[NotifyCanExecuteChangedFor(nameof(SaveAppDataCommand))]
 		[NotifyCanExecuteChangedFor(nameof(LoadPreviouseCommand))]
 		[NotifyCanExecuteChangedFor(nameof(ExitCommand))]
-		private IAppState _currentState;
+		[NotifyCanExecuteChangedFor(nameof(AddItemCommand))]
+		[NotifyCanExecuteChangedFor(nameof(EditItemCommand))]
+		[NotifyCanExecuteChangedFor(nameof(RemoveItemCommand))]
+		public partial IAppState CurrentState { get; set; }
 
+		/// <summary>
+		/// カウントダウンタイマーの時間
+		/// </summary>
 		[ObservableProperty]
-		private string _countDownTimer = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
+		public partial string CountDownTimer { get; set; } = TimeSpan.Zero.ToString(@"hh\:mm\:ss");
 
+		/// <summary>
+		/// ステータスバーに表示するコントロール
+		/// </summary>
 		[ObservableProperty]
-		private ObservableObject? _currentSBControl;
+		public partial ObservableObject? CurrentSBControl { get; set; }
 
+		/// <summary>
+		/// バックアップの進捗
+		/// </summary>
 		[ObservableProperty]
-		private int _progressValue;
+		public partial int ProgressValue { get; set; }
 
+		/// <summary>
+		/// バックアップの進捗メッセージ
+		/// </summary>
 		[ObservableProperty]
-		private string _progressMsg = string.Empty;
+		public partial string ProgressMsg { get; set; } = string.Empty;
+
+		/// <summary>
+		/// バックアップ準備中かどうか
+		/// </summary>
+		[ObservableProperty]
+		public partial bool ProgressIsBusy { get; set; } = false;
 		#endregion
 
 		private readonly BackupToolModel _model;
 
 		private CancellationTokenSource? _cts;
 
-		private int _selectedIndex;
+		private int _intervalCmbSelectedIndex;
 
 		private TimeSpan _interval;
 
 		private readonly string _appDataFilePath;
 		private readonly JsonSerializerOptions _jsonOps = new() { WriteIndented = true };
-		
+
 
 		public MainWindowViewModel()
 		{
 			_model = new BackupToolModel();
 			CurrentState = new InitialState();
-			_selectedIndex = 1;
-			SelectedInterval = IntervalCmbSource[_selectedIndex];
+			ExcludeList = [];
+			ExcludeListSelectedIndex = -1;
+			IntervalCmbSource = [
+				new IntervalCmbItems("5分", TimeSpan.FromMinutes(5)),
+				new IntervalCmbItems("10分", TimeSpan.FromMinutes(10)),
+				new IntervalCmbItems("20分", TimeSpan.FromMinutes(20)),
+				new IntervalCmbItems("30分", TimeSpan.FromMinutes(30)),
+				new IntervalCmbItems("45分", TimeSpan.FromMinutes(45)),
+				new IntervalCmbItems("1時間", TimeSpan.FromHours(1)),
+				new IntervalCmbItems("2時間", TimeSpan.FromHours(2))
+			];
+			_intervalCmbSelectedIndex = 1;
+			SelectedInterval = IntervalCmbSource[_intervalCmbSelectedIndex];
 			_interval = SelectedInterval.Value;
-			_currentSBControl = new EmptyViewModel();
+			CurrentSBControl = new EmptyViewModel();
 
 			// アプリケーションデータの保存先を決定する
 			string _roming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -95,16 +149,20 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : 
-					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string full = value switch
+				{
+					_ when string.IsNullOrWhiteSpace(value) => string.Empty,
+					_ when (Path.GetDirectoryName(value) == null) => value,
+					_ => Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+				};
 
-				_sourcePath = full;
+				SourcePath = full;
 				_model.SourcePath = full;
 			}
 			catch
 			{
 				// Path.GetFullPath が失敗した場合は受け取った値をそのまま使用する
-				_sourcePath = value;
+				SourcePath = value;
 				_model.SourcePath = value;
 			}
 
@@ -119,15 +177,19 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : 
-					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string full = value switch
+				{
+					_ when string.IsNullOrWhiteSpace(value) => string.Empty,
+					_ when (Path.GetDirectoryName(value) == null) => value,
+					_ => Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+				};
 
-				_destinationPath = full;
+				DestinationPath = full;
 				_model.DestinationPath = full;
 			}
 			catch
 			{
-				_destinationPath = value;
+				DestinationPath = value;
 				_model.DestinationPath = value;
 			}
 
@@ -136,10 +198,15 @@ namespace R88.BackupTool.ViewModels
 			CurrentState.ChangeState(this);
 		}
 
+		partial void OnExcludeListChanged(ObservableCollection<ExcludeListItem> value)
+		{
+			_model.ExcludeList = value;
+		}
+
 		partial void OnSelectedIntervalChanged(IntervalCmbItems value)
 		{
 			_interval = SelectedInterval.Value;
-			_selectedIndex = IntervalCmbSource.IndexOf(value);
+			_intervalCmbSelectedIndex = IntervalCmbSource.IndexOf(value);
 		}
 
 		/// <summary>
@@ -169,6 +236,40 @@ namespace R88.BackupTool.ViewModels
 			return UncPathHelper.IsUnc(SourcePath) || UncPathHelper.IsUnc(DestinationPath);
 		}
 
+		/// <summary>
+		/// 除外リストのアイテムが選択されているかどうか
+		/// </summary>
+		/// <returns>選択状態：true。非選択状態：false</returns>
+		private bool IsSelected()
+		{
+			if (ExcludeListSelectedIndex != -1)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// 除外リストに重複がないかを調べるメソッド
+		/// </summary>
+		/// <param name="filePath">比較対象</param>
+		/// <param name="excludeList">除外リスト</param>
+		/// <returns>重複あり：true。重複なし：false</returns>
+		private static bool IsSamePath(string filePath, ObservableCollection<ExcludeListItem> excludeList)
+		{
+			foreach (var f in excludeList)
+			{
+				if (filePath.Equals(f.FilePath, StringComparison.OrdinalIgnoreCase))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
 		#region Commands
 		/// <summary>
 		/// バックアップ元フォルダを選択するコマンド
@@ -189,30 +290,81 @@ namespace R88.BackupTool.ViewModels
 		}
 
 		/// <summary>
+		/// 除外リストに追加するコマンド
+		/// </summary>
+		[RelayCommand(CanExecute = nameof(CanExecuteAddItem))]
+		public void AddItem()
+		{
+			string filePath = ExcludeListModel.FileSelect(SourcePath);
+			if (!string.IsNullOrWhiteSpace(filePath) && !IsSamePath(filePath, ExcludeList))
+			{
+				ExcludeList.Add(new ExcludeListItem { FilePath = filePath });
+			}
+		}
+
+		/// <summary>
+		/// 除外リストのアイテムを入れ替えるメソッド
+		/// </summary>
+		[RelayCommand(CanExecute = nameof(CanExcuteEditItem))]
+		public void EditItem()
+		{
+			string selectItem = ExcludeList[ExcludeListSelectedIndex].FilePath;
+			string filePath = ExcludeListModel.FileSelect(selectItem, SourcePath);
+			if (!string.IsNullOrWhiteSpace(filePath) && !IsSamePath(filePath, ExcludeList))
+			{
+				ExcludeList.Insert(ExcludeListSelectedIndex, new ExcludeListItem { FilePath = filePath });
+				ExcludeList.RemoveAt(ExcludeListSelectedIndex);
+			}
+		}
+
+		/// <summary>
+		/// 除外リストから削除するメソッド
+		/// </summary>
+		[RelayCommand(CanExecute = nameof(CanExcuteRemoveItem))]
+		public void RemoveItem()
+		{
+			ExcludeList.RemoveAt(ExcludeListSelectedIndex);
+		}
+
+		/// <summary>
 		/// バックアップを実行するコマンド
 		/// </summary>
 		/// <returns>Taskの終了</returns>
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
-		public async Task BackupRun() 
+		public async Task BackupRun()
 		{
+			CurrentState = new BackingUpState();
+			CurrentSBControl = new BackupProgressViewModel();
+
 			do
 			{
 				_cts = new CancellationTokenSource();
 				try
 				{
-					CurrentState.ChangeState(this);
+					ProgressIsBusy = true;
 					ProgressMsg = "準備中";
-					await Task.Run(() => _model.Backup(new Progress<int>(p => ProgressValue = p), new Progress<string>(m => ProgressMsg = m)));
+					await Task.Run(() => _model.Backup(
+						new Progress<int>(p => ProgressValue = p),
+						new Progress<string>(m => ProgressMsg = m),
+						new Progress<bool>(b => ProgressIsBusy = b))
+					);
+
 					ProgressMsg = "完了";
 					ProgressValue = 100;
+
+					// WaitStateへ遷移
+					CurrentState.ChangeState(this);
+
 					// バックアップが完了したらカウントダウンタイマーを開始する
 					int timeleft = (int)_interval.TotalSeconds;
-					CurrentState.ChangeState(this);
-					while (timeleft >= 0) { 	
+					while (timeleft >= 0)
+					{
 						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
 						await Task.Delay(1000, _cts.Token);
-						timeleft--;	
+						timeleft--;
 					}
+					// BackingUpStateへ遷移
+					CurrentState.ChangeState(this);
 				}
 
 				catch (TaskCanceledException)
@@ -240,8 +392,7 @@ namespace R88.BackupTool.ViewModels
 					_cts.Dispose();
 					_cts = null;
 				}
-			}while (true);
-			
+			} while (true);
 		}
 		
 		/// <summary>
@@ -263,7 +414,8 @@ namespace R88.BackupTool.ViewModels
 			{
 				DestinationPath = DestinationPath,
 				SourcePath = SourcePath,
-				SelectedIndex = _selectedIndex
+				SelectedIndex = _intervalCmbSelectedIndex,
+				ExcludeList = [.. ExcludeList]
 			};
 
 			var json = JsonSerializer.Serialize(appData, _jsonOps);
@@ -306,9 +458,10 @@ namespace R88.BackupTool.ViewModels
 						SourcePath = addData.SourcePath;
 						if (addData.SelectedIndex >= 0 && addData.SelectedIndex < IntervalCmbSource.Count)
 						{
-							_selectedIndex = addData.SelectedIndex;
-							SelectedInterval = IntervalCmbSource[_selectedIndex];
+							_intervalCmbSelectedIndex = addData.SelectedIndex;
+							SelectedInterval = IntervalCmbSource[_intervalCmbSelectedIndex];
 						}
+						ExcludeList = [.. addData.ExcludeList];
 					}
 				}
 			}
@@ -339,6 +492,10 @@ namespace R88.BackupTool.ViewModels
 		private bool CanExecuteSaveAppDatas() => CurrentState.CanExecuteSaveAppDatas();
 		private bool CanExecuteLoadPrevious() => CurrentState.CanExecuteLoadPrevious();
 		private bool CanExecuteExit() => CurrentState.CanExecuteExit();
+		private bool CanExecuteAddItem() => CurrentState.CanExecuteAddItem();
+		private bool CanExcuteEditItem() => IsSelected() && CurrentState.CanExecuteEditItem();
+		private bool CanExcuteRemoveItem() => IsSelected() && CurrentState.CanExecuteRemoveItem();
+
 		#endregion
 	}
 }

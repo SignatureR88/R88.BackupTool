@@ -1,6 +1,13 @@
-﻿using System.Diagnostics;
+﻿using Alphaleonis.Win32.Vss;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
+
+// System.IOの代わりにAlphaFSのnamespaceを使用
+using File = Alphaleonis.Win32.Filesystem.File;
+using Directory = Alphaleonis.Win32.Filesystem.Directory;
+using Path = Alphaleonis.Win32.Filesystem.Path;
+using System.Linq.Expressions;
 
 namespace R88.BackupTool.Models
 {
@@ -15,6 +22,16 @@ namespace R88.BackupTool.Models
 		/// バックアップ先のパス
 		/// </summary>
 		public string DestinationPath { get; set; } = string.Empty;
+
+		/// <summary>
+		/// 除外対象リスト
+		/// </summary>
+		public ObservableCollection<ExcludeListItem> ExcludeList;
+
+		public BackupToolModel() 
+		{
+			ExcludeList = [];
+		}
 
 		/// <summary>
 		/// OpenFolderDialogを使用してフォルダパスを取得するメソッド
@@ -48,7 +65,7 @@ namespace R88.BackupTool.Models
 		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
 		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
 		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
-		public void Backup(IProgress<int> progress, IProgress<string> progressMessage)
+		public void Backup(IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
 		{
 			string timeStamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
 			string? root = Path.GetPathRoot(DestinationPath);
@@ -86,7 +103,7 @@ namespace R88.BackupTool.Models
 					Directory.CreateDirectory(DestinationPath);
 				}
 
-				CompressedWorkflow(sourceFullPath, zipPath, progress, progressMessage);
+				CreateSnapshot(sourceFullPath, zipPath, progress , progressMessage, isBusy);
 
 			}
 			finally
@@ -95,13 +112,66 @@ namespace R88.BackupTool.Models
 			}
 		}
 
+		private void CreateSnapshot(string src, string zipPath, IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
+		{
+			// 対象のドライブ文字を取得
+			string volumeName = Path.GetPathRoot(src);
+			if(!volumeName.EndsWith('\\')) volumeName += "\\";
+			IVssBackupComponents? backup = null;
+			Guid snapshotId = Guid.Empty;
+			try
+			{
+				progressMessage.Report("VSS 初期化中...");
+				IVssFactory vssImplementation = VssFactoryProvider.Default.GetVssFactory();
+				backup = vssImplementation.CreateVssBackupComponents();
+				// バックアップの初期化設定
+				backup.InitializeForBackup(null);
+				backup.GatherWriterMetadata();
+				backup.SetBackupState(false, false, VssBackupType.Full, false);
+				backup.StartSnapshotSet();
 
-		private static void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
+				// ボリュームをスナップショットセットに追加
+				snapshotId = backup.AddToSnapshotSet(volumeName, Guid.Empty);
+
+				progressMessage.Report("スナップショット作成中...");
+				backup.PrepareForBackup();
+				backup.DoSnapshotSet();
+
+				VssSnapshotProperties props = backup.GetSnapshotProperties(snapshotId);
+				string snapshotDevObj = props.SnapshotDeviceObject;
+
+				string relativePath = src[volumeName.Length..];
+				string snapshotFolderPath = Path.Combine(snapshotDevObj, relativePath);
+
+				if (!snapshotFolderPath.EndsWith('\\'))
+				{
+					snapshotFolderPath += "\\";
+				}
+
+				isBusy.Report(false);
+				CompressedWorkflow(snapshotFolderPath, zipPath, progress, progressMessage);
+
+				// 後処理
+				backup.BackupComplete();
+			}
+			catch (Exception)
+			{
+				backup?.AbortBackup();
+			}
+			finally
+			{
+				if(snapshotId != Guid.Empty) backup?.DeleteSnapshot(snapshotId, true);
+				backup?.Dispose();
+			}
+		}
+
+		private void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
 		{
 			// ファイル一覧と総バイト数
 			var files = Directory.GetFiles(srcDir, "*", SearchOption.AllDirectories);
-			long totalBytes = files.Sum(f => new FileInfo(f).Length);
-			if(totalBytes == 0)
+			var filteredFiles = ExclusionFilter(files, srcDir);
+			long totalBytes = filteredFiles.Sum(f => new FileInfo(f).Length);
+			if(filteredFiles.Length == 0)
 			{
 				progress.Report(100);
 				using(ZipFile.Open(destZip, ZipArchiveMode.Create)) { }
@@ -133,7 +203,7 @@ namespace R88.BackupTool.Models
 			{
 				// コピーフェーズ
 				progressMessage.Report("コピー中");
-				foreach(var f in files)
+				foreach(var f in filteredFiles)
 				{
 					var rel = Path.GetRelativePath(srcDir, f);
 					var destPath = Path.Combine(tempRoot, rel);
@@ -168,7 +238,7 @@ namespace R88.BackupTool.Models
 
 		private static void CopyFileWithProgress(string src, string dest, IProgress<long> progress)
 		{
-			using var inFs = File.OpenRead(src);
+			using var inFs = new FileStream(src, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 			using var outFs = File.Create(dest);
 			CopyStreamWithProgress(inFs, outFs, progress);
 		}
@@ -182,6 +252,67 @@ namespace R88.BackupTool.Models
 				output.Write(buff, 0, read);
 				progress.Report(read);
 			}
+		}
+
+		/// <summary>
+		/// 除外リストのファイルを削除するメソッド
+		/// スナップショットのルート(srcDir)からの相対パスを元の SourcePath に結合して
+		/// 除外リストとの比較を行います。
+		/// </summary>
+		/// <param name="files">ファイル一覧(スナップショット上のパス)</param>
+		/// <param name="srcDir">スナップショット上のルートパス</param>
+		/// <returns>削除後のファイル一覧</returns>
+		private string[] ExclusionFilter(string[] files, string srcDir)
+		{
+			if (files == null || files.Length == 0) return [];
+			if (ExcludeList == null || ExcludeList.Count == 0) return files;
+
+			var list = new List<string>(files);
+
+			// 後ろから走査して安全に削除
+			for (int i = list.Count - 1; i >= 0; i--)
+			{
+				string file = list[i];
+				string relPath;
+				try
+				{
+					relPath = Path.GetRelativePath(srcDir, file);
+				}
+				catch
+				{
+					// 相対化できない場合は除外しない
+					continue;
+				}
+
+				// スナップショット上の相対パスを元の SourcePath に結合して比較する
+				string originalPath;
+				try
+				{
+					originalPath = Path.GetFullPath(Path.Combine(SourcePath, relPath))
+						.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				}
+				catch
+				{
+					continue;
+				}
+
+				bool excluded = false;
+				foreach (var ex in ExcludeList)
+				{
+					if (string.Equals(originalPath, ex.FilePath, StringComparison.OrdinalIgnoreCase))
+					{
+						excluded = true;
+						break;
+					}
+				}
+
+				if (excluded)
+				{
+					list.RemoveAt(i);
+				}
+			}
+
+			return [.. list];
 		}
 	}
 }
