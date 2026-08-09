@@ -115,7 +115,7 @@ namespace R88.BackupTool.ViewModels
 
 		private readonly string _appDataFilePath;
 		private readonly JsonSerializerOptions _jsonOps = new() { WriteIndented = true };
-		
+
 
 		public MainWindowViewModel()
 		{
@@ -149,8 +149,12 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : 
-					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string full = value switch
+				{
+					_ when string.IsNullOrWhiteSpace(value) => string.Empty,
+					_ when (Path.GetDirectoryName(value) == null) => value,
+					_ => Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+				};
 
 				SourcePath = full;
 				_model.SourcePath = full;
@@ -173,8 +177,12 @@ namespace R88.BackupTool.ViewModels
 			// 正規化されたフルパスをバックフィールドに格納する
 			try
 			{
-				string full = string.IsNullOrWhiteSpace(value) ? value : 
-					Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				string full = value switch
+				{
+					_ when string.IsNullOrWhiteSpace(value) => string.Empty,
+					_ when (Path.GetDirectoryName(value) == null) => value,
+					_ => Path.GetFullPath(value).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+				};
 
 				DestinationPath = full;
 				_model.DestinationPath = full;
@@ -301,7 +309,7 @@ namespace R88.BackupTool.ViewModels
 		public void EditItem()
 		{
 			string selectItem = ExcludeList[ExcludeListSelectedIndex].FilePath;
-			string filePath = ExcludeListModel.FileSelect(selectItem ,SourcePath);
+			string filePath = ExcludeListModel.FileSelect(selectItem, SourcePath);
 			if (!string.IsNullOrWhiteSpace(filePath) && !IsSamePath(filePath, ExcludeList))
 			{
 				ExcludeList.Insert(ExcludeListSelectedIndex, new ExcludeListItem { FilePath = filePath });
@@ -323,32 +331,8 @@ namespace R88.BackupTool.ViewModels
 		/// </summary>
 		/// <returns>Taskの終了</returns>
 		[RelayCommand(CanExecute = nameof(CanExecuteBackup))]
-		public async Task BackupRun() 
+		public async Task BackupRun()
 		{
-			// 管理者権限かチェック
-			var identity = WindowsIdentity.GetCurrent();
-			var principal = new WindowsPrincipal(identity);
-
-			if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
-			{
-				//　管理者権限で再起動
-				var psi = new ProcessStartInfo
-				{
-					FileName = Process.GetCurrentProcess().MainModule?.FileName,
-					UseShellExecute = true,
-					Verb = "runas"
-				};
-
-				try
-				{
-					Process.Start(psi);
-				}
-				catch
-				{
-					return;
-
-				}
-			}
 			CurrentState = new BackingUpState();
 			CurrentSBControl = new BackupProgressViewModel();
 
@@ -370,13 +354,14 @@ namespace R88.BackupTool.ViewModels
 
 					// WaitStateへ遷移
 					CurrentState.ChangeState(this);
-					
+
 					// バックアップが完了したらカウントダウンタイマーを開始する
 					int timeleft = (int)_interval.TotalSeconds;
-					while (timeleft >= 0) { 	
+					while (timeleft >= 0)
+					{
 						CountDownTimer = TimeSpan.FromSeconds(timeleft).ToString(@"hh\:mm\:ss");
 						await Task.Delay(1000, _cts.Token);
-						timeleft--;	
+						timeleft--;
 					}
 					// BackingUpStateへ遷移
 					CurrentState.ChangeState(this);
@@ -407,8 +392,7 @@ namespace R88.BackupTool.ViewModels
 					_cts.Dispose();
 					_cts = null;
 				}
-			}while (true);
-			
+			} while (true);
 		}
 		
 		/// <summary>

@@ -117,18 +117,21 @@ namespace R88.BackupTool.Models
 			// 対象のドライブ文字を取得
 			string volumeName = Path.GetPathRoot(src);
 			if(!volumeName.EndsWith('\\')) volumeName += "\\";
+			IVssBackupComponents? backup = null;
+			Guid snapshotId = Guid.Empty;
 			try
 			{
 				progressMessage.Report("VSS 初期化中...");
 				IVssFactory vssImplementation = VssFactoryProvider.Default.GetVssFactory();
-				using IVssBackupComponents backup = vssImplementation.CreateVssBackupComponents();
+				backup = vssImplementation.CreateVssBackupComponents();
 				// バックアップの初期化設定
 				backup.InitializeForBackup(null);
 				backup.GatherWriterMetadata();
+				backup.SetBackupState(false, false, VssBackupType.Full, false);
 				backup.StartSnapshotSet();
 
 				// ボリュームをスナップショットセットに追加
-				Guid snapshotId = backup.AddToSnapshotSet(volumeName, Guid.Empty);
+				snapshotId = backup.AddToSnapshotSet(volumeName, Guid.Empty);
 
 				progressMessage.Report("スナップショット作成中...");
 				backup.PrepareForBackup();
@@ -153,9 +156,13 @@ namespace R88.BackupTool.Models
 			}
 			catch (Exception)
 			{
-				throw;
+				backup?.AbortBackup();
 			}
-			
+			finally
+			{
+				if(snapshotId != Guid.Empty) backup?.DeleteSnapshot(snapshotId, true);
+				backup?.Dispose();
+			}
 		}
 
 		private void CompressedWorkflow(string srcDir, string destZip, IProgress<int> progress, IProgress<string> progressMessage)
