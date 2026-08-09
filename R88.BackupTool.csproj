@@ -8,7 +8,6 @@
     <UseWPF>true</UseWPF>
     <Platforms>AnyCPU;x64</Platforms>
     <SignAssembly>False</SignAssembly>
-    <AssemblyOriginatorKeyFile>C:\Users\atoz_\source\repos\certificate\R88.pfx</AssemblyOriginatorKeyFile>
     <DelaySign>False</DelaySign>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
