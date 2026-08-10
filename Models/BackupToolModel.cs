@@ -178,47 +178,24 @@ namespace R88.BackupTool.Models
 				return;
 			}
 
-			//一時フォルダの作成
-			var tempRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-			Directory.CreateDirectory(tempRoot);
-
-			long copiedBytes = 0;
 			long compressedBytes = 0;
-
-			var copyProgress = new Progress<long>(b =>
-			{
-				copiedBytes += b;
-				int percent = (int)((copiedBytes + compressedBytes) * 100 / (2 * totalBytes));
-				progress.Report(Math.Min(100, percent));
-			});
 
 			var compressProgress = new Progress<long>(b =>
 			{
 				compressedBytes += b;
-				int percent = (int)((copiedBytes + compressedBytes) * 100 / (2 * totalBytes));
+				int percent = (int)(compressedBytes * 100 / totalBytes);
 				progress.Report(Math.Min(100, percent));
 			});
 
 			try
 			{
-				// コピーフェーズ
-				progressMessage.Report("コピー中");
+				//圧縮フェーズ
+				progressMessage.Report("圧縮中");
+				using var zipFs = new FileStream(destZip, FileMode.Create, FileAccess.Write, FileShare.None);
+				using var archive = new ZipArchive(zipFs, ZipArchiveMode.Create);
 				foreach(var f in filteredFiles)
 				{
 					var rel = Path.GetRelativePath(srcDir, f);
-					var destPath = Path.Combine(tempRoot, rel);
-					Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-					CopyFileWithProgress(f, destPath, copyProgress);
-				}
-
-				//圧縮フェーズ
-				progressMessage.Report("圧縮中");
-				var tempFiles = Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories);
-				using var zipFs = new FileStream(destZip, FileMode.Create, FileAccess.Write, FileShare.None);
-				using var archive = new ZipArchive(zipFs, ZipArchiveMode.Create);
-				foreach(var f in tempFiles)
-				{
-					var rel = Path.GetRelativePath(tempRoot, f);
 					var entry = archive.CreateEntry(rel, CompressionLevel.Optimal);
 					using var entryStream = entry.Open();
 					using var fs = File.OpenRead(f);
@@ -232,15 +209,8 @@ namespace R88.BackupTool.Models
 			}
 			finally
 			{
-				try { Directory.Delete(tempRoot, true); } catch { }
+				
 			}
-		}
-
-		private static void CopyFileWithProgress(string src, string dest, IProgress<long> progress)
-		{
-			using var inFs = new FileStream(src, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-			using var outFs = File.Create(dest);
-			CopyStreamWithProgress(inFs, outFs, progress);
 		}
 
 		private static void CopyStreamWithProgress(Stream input, Stream output, IProgress<long> progress)
