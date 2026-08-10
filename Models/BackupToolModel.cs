@@ -190,12 +190,12 @@ namespace R88.BackupTool.Models
 			long compressedBytes = 0;
 
 			// 内部でバイト集計を行い、外部にはint(%)で報告するコールバック
-			Action<long> bytesCallback = b =>
+			void bytesCallback(long b)
 			{
 				compressedBytes += b;
 				int percent = (int)(compressedBytes * 100 / totalBytes);
 				progress.Report(Math.Min(100, percent));
-			};
+			}
 
 			try
 			{
