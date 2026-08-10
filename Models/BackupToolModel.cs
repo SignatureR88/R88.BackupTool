@@ -59,10 +59,10 @@ namespace R88.BackupTool.Models
 
 		/// <summary>
 		/// バックアップを実行するメソッド
-		/// ロック中のファイル対策で一時フォルダに待避後圧縮します
 		/// </summary>
 		/// <param name="progress">進捗状況を報告するIProgressインターフェース</param>
 		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
+		/// <param name="isBusy">バックアップ準備中フラグ</param>
 		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
 		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
 		public void Backup(IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
@@ -112,6 +112,14 @@ namespace R88.BackupTool.Models
 			}
 		}
 
+		/// <summary>
+		/// スナップショットを作成し、圧縮バックアップするメソッド
+		/// </summary>
+		/// <param name="src">バックアップ対象</param>
+		/// <param name="zipPath">圧縮ファイルのパス</param>
+		/// <param name="progress">進捗状況を報告するIProgressインターフェース</param>
+		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
+		/// <param name="isBusy">バックアップ準備中フラグ</param>
 		private void CreateSnapshot(string src, string zipPath, IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
 		{
 			// 対象のドライブ文字を取得
@@ -157,6 +165,7 @@ namespace R88.BackupTool.Models
 			catch (Exception)
 			{
 				backup?.AbortBackup();
+				throw;
 			}
 			finally
 			{
@@ -178,51 +187,29 @@ namespace R88.BackupTool.Models
 				return;
 			}
 
-			//一時フォルダの作成
-			var tempRoot = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-			Directory.CreateDirectory(tempRoot);
-
-			long copiedBytes = 0;
 			long compressedBytes = 0;
 
-			var copyProgress = new Progress<long>(b =>
-			{
-				copiedBytes += b;
-				int percent = (int)((copiedBytes + compressedBytes) * 100 / (2 * totalBytes));
-				progress.Report(Math.Min(100, percent));
-			});
-
-			var compressProgress = new Progress<long>(b =>
+			// 内部でバイト集計を行い、外部にはint(%)で報告するコールバック
+			void bytesCallback(long b)
 			{
 				compressedBytes += b;
-				int percent = (int)((copiedBytes + compressedBytes) * 100 / (2 * totalBytes));
+				int percent = (int)(compressedBytes * 100 / totalBytes);
 				progress.Report(Math.Min(100, percent));
-			});
+			}
 
 			try
 			{
-				// コピーフェーズ
-				progressMessage.Report("コピー中");
+				//圧縮フェーズ
+				progressMessage.Report("圧縮中");
+				using var zipFs = new FileStream(destZip, FileMode.Create, FileAccess.Write, FileShare.None);
+				using var archive = new ZipArchive(zipFs, ZipArchiveMode.Create);
 				foreach(var f in filteredFiles)
 				{
 					var rel = Path.GetRelativePath(srcDir, f);
-					var destPath = Path.Combine(tempRoot, rel);
-					Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-					CopyFileWithProgress(f, destPath, copyProgress);
-				}
-
-				//圧縮フェーズ
-				progressMessage.Report("圧縮中");
-				var tempFiles = Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories);
-				using var zipFs = new FileStream(destZip, FileMode.Create, FileAccess.Write, FileShare.None);
-				using var archive = new ZipArchive(zipFs, ZipArchiveMode.Create);
-				foreach(var f in tempFiles)
-				{
-					var rel = Path.GetRelativePath(tempRoot, f);
 					var entry = archive.CreateEntry(rel, CompressionLevel.Optimal);
 					using var entryStream = entry.Open();
 					using var fs = File.OpenRead(f);
-					CopyStreamWithProgress(fs, entryStream, compressProgress);
+					CopyStreamWithProgress(fs, entryStream, bytesCallback);
 				}
 			}
 			catch
@@ -232,25 +219,24 @@ namespace R88.BackupTool.Models
 			}
 			finally
 			{
-				try { Directory.Delete(tempRoot, true); } catch { }
+				
 			}
 		}
-
-		private static void CopyFileWithProgress(string src, string dest, IProgress<long> progress)
-		{
-			using var inFs = new FileStream(src, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-			using var outFs = File.Create(dest);
-			CopyStreamWithProgress(inFs, outFs, progress);
-		}
-
-		private static void CopyStreamWithProgress(Stream input, Stream output, IProgress<long> progress)
+		/// <summary>
+		/// アーカイブへの書き込みメソッド
+		/// 進捗状況をレポートする
+		/// </summary>
+		/// <param name="input">アーカイブ入力ストリーム</param>
+		/// <param name="output">アーカイブ書き込みストリーム</param>
+		/// <param name="onBytes">進捗度</param>
+		private static void CopyStreamWithProgress(Stream input, Stream output, Action<long> onBytes)
 		{
 			byte[] buff = new byte[65536];
 			int read;
 			while((read = input.Read(buff, 0, buff.Length)) > 0)
 			{
 				output.Write(buff, 0, read);
-				progress.Report(read);
+				onBytes?.Invoke(read);
 			}
 		}
 
