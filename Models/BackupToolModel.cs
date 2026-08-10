@@ -59,10 +59,10 @@ namespace R88.BackupTool.Models
 
 		/// <summary>
 		/// バックアップを実行するメソッド
-		/// ロック中のファイル対策で一時フォルダに待避後圧縮します
 		/// </summary>
 		/// <param name="progress">進捗状況を報告するIProgressインターフェース</param>
 		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
+		/// <param name="isBusy">バックアップ準備中フラグ</param>
 		/// <exception cref="DirectoryNotFoundException">バックアップ元が存在しない時スローされる</exception>
 		/// <exception cref="DriveNotFoundException">バックアップ先のドライブが存在しない時スローされる</exception>
 		public void Backup(IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
@@ -112,6 +112,14 @@ namespace R88.BackupTool.Models
 			}
 		}
 
+		/// <summary>
+		/// スナップショットを作成し、圧縮バックアップするメソッド
+		/// </summary>
+		/// <param name="src">バックアップ対象</param>
+		/// <param name="zipPath">圧縮ファイルのパス</param>
+		/// <param name="progress">進捗状況を報告するIProgressインターフェース</param>
+		/// <param name="progressMessage">進捗メッセージを報告するIProgressインターフェース</param>
+		/// <param name="isBusy">バックアップ準備中フラグ</param>
 		private void CreateSnapshot(string src, string zipPath, IProgress<int> progress, IProgress<string> progressMessage, IProgress<bool> isBusy)
 		{
 			// 対象のドライブ文字を取得
@@ -157,6 +165,7 @@ namespace R88.BackupTool.Models
 			catch (Exception)
 			{
 				backup?.AbortBackup();
+				throw;
 			}
 			finally
 			{
@@ -180,12 +189,13 @@ namespace R88.BackupTool.Models
 
 			long compressedBytes = 0;
 
-			var compressProgress = new Progress<long>(b =>
+			// 内部でバイト集計を行い、外部にはint(%)で報告するコールバック
+			Action<long> bytesCallback = b =>
 			{
 				compressedBytes += b;
 				int percent = (int)(compressedBytes * 100 / totalBytes);
 				progress.Report(Math.Min(100, percent));
-			});
+			};
 
 			try
 			{
@@ -199,7 +209,7 @@ namespace R88.BackupTool.Models
 					var entry = archive.CreateEntry(rel, CompressionLevel.Optimal);
 					using var entryStream = entry.Open();
 					using var fs = File.OpenRead(f);
-					CopyStreamWithProgress(fs, entryStream, compressProgress);
+					CopyStreamWithProgress(fs, entryStream, bytesCallback);
 				}
 			}
 			catch
@@ -212,15 +222,21 @@ namespace R88.BackupTool.Models
 				
 			}
 		}
-
-		private static void CopyStreamWithProgress(Stream input, Stream output, IProgress<long> progress)
+		/// <summary>
+		/// アーカイブへの書き込みメソッド
+		/// 進捗状況をレポートする
+		/// </summary>
+		/// <param name="input">アーカイブ入力ストリーム</param>
+		/// <param name="output">アーカイブ書き込みストリーム</param>
+		/// <param name="onBytes">進捗度</param>
+		private static void CopyStreamWithProgress(Stream input, Stream output, Action<long> onBytes)
 		{
 			byte[] buff = new byte[65536];
 			int read;
 			while((read = input.Read(buff, 0, buff.Length)) > 0)
 			{
 				output.Write(buff, 0, read);
-				progress.Report(read);
+				onBytes?.Invoke(read);
 			}
 		}
 
