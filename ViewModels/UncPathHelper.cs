@@ -1,6 +1,6 @@
 ﻿namespace R88.BackupTool.ViewModels
 {
-	internal static class UncPathHelper
+	internal sealed class UncPathHelper
 	{
 		/// <summary>
 		/// 渡されたパスがUNCパスかどうかを判定する

@@ -5,7 +5,7 @@ namespace R88.BackupTool.Models
 	/// <summary>
 	/// 設定保存用のクラス
 	/// </summary>
-	internal class AppDatas
+	internal sealed class AppDatas
 	{
 		[JsonPropertyName("srcPath")]
 		public string SourcePath { get; set; } = string.Empty;

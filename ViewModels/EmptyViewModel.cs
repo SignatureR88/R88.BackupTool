@@ -2,7 +2,7 @@
 
 namespace R88.BackupTool.ViewModels
 {
-    internal partial class EmptyViewModel : ObservableObject
+    internal sealed partial class EmptyViewModel : ObservableObject
     {
         public EmptyViewModel() { }
     }

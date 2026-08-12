@@ -5,7 +5,7 @@ namespace R88.BackupTool.States
 	/// <summary>
 	/// 待機状態クラス
 	/// </summary>
-	internal class WaitingState : IAppState
+	internal sealed class WaitingState : IAppState
 	{
 		public string StatusMessage => "次のバックアップまで";
 		public bool IsIntervalCmbEnabled => false;

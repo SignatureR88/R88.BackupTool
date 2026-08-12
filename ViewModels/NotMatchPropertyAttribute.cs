@@ -6,7 +6,7 @@ namespace R88.BackupTool.ViewModels
 	/// 指定したプロパティと値が一致しないことを検証するカスタムバリデーション属性
 	/// </summary>
 	/// <param name="targetProperty">比較対象のプロパティ名</param>
-	internal class NotMatchPropertyAttribute(string targetProperty) : ValidationAttribute
+	internal sealed class NotMatchPropertyAttribute(string targetProperty) : ValidationAttribute
 	{
 		private readonly string _targetProperty = targetProperty;
 

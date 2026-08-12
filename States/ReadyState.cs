@@ -5,7 +5,7 @@ namespace R88.BackupTool.States
 	/// <summary>
 	/// 準備完了状態クラス
 	/// </summary>
-	internal class ReadyState : IAppState
+	internal sealed class ReadyState : IAppState
 	{
 		public string StatusMessage => "準備完了";
 		public bool IsIntervalCmbEnabled => true;

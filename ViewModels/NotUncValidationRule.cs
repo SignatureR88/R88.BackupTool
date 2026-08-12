@@ -6,7 +6,7 @@ namespace R88.BackupTool.ViewModels
 	/// <summary>
 	/// UNCパスでないことを検証するバリデーションルール
 	/// </summary>
-	internal class NotUncValidationRule : ValidationRule
+	internal sealed class NotUncValidationRule : ValidationRule
 	{
 		public override ValidationResult? Validate(object value, CultureInfo cultureInfo)
 		{

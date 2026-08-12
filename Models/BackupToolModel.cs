@@ -7,11 +7,11 @@ using System.IO.Compression;
 using File = Alphaleonis.Win32.Filesystem.File;
 using Directory = Alphaleonis.Win32.Filesystem.Directory;
 using Path = Alphaleonis.Win32.Filesystem.Path;
-using System.Linq.Expressions;
+
 
 namespace R88.BackupTool.Models
 {
-	internal class BackupToolModel
+	internal sealed class BackupToolModel
 	{
 		/// <summary>
 		/// バックアップ元のパス

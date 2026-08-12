@@ -3,17 +3,15 @@ using CommunityToolkit.Mvvm.Input;
 using R88.BackupTool.Models;
 using R88.BackupTool.States;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Security.Principal;
 using System.Text.Json;
 using System.Windows;
 
 
 namespace R88.BackupTool.ViewModels
 {
-	internal partial class MainWindowViewModel : ObservableValidator
+	internal sealed partial class MainWindowViewModel : ObservableValidator
 	{
 		#region Properties
 		/// <summary>

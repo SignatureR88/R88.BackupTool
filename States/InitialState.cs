@@ -5,7 +5,7 @@ namespace R88.BackupTool.States
 	/// <summary>
 	/// 初期状態クラス
 	/// </summary>
-	internal class InitialState : IAppState
+	internal sealed class InitialState : IAppState
 	{
 		public string StatusMessage => "フォルダが未指定です。";
 		public bool IsIntervalCmbEnabled => true;

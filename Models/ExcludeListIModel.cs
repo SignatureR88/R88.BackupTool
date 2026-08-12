@@ -2,7 +2,7 @@
 
 namespace R88.BackupTool.Models
 {
-    class ExcludeListModel
+    internal sealed class ExcludeListModel
     {
         /// <summary>
         /// 共通ダイアログでファイルを選択するメソッド
@@ -59,7 +59,7 @@ namespace R88.BackupTool.Models
     /// <summary>
     /// 除外リストのアイテムクラス
     /// </summary>
-    class ExcludeListItem
+    internal sealed class ExcludeListItem
     {
         public string FilePath { get; set; } = string.Empty;
     }
